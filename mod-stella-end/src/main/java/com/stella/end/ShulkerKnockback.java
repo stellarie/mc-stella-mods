@@ -7,8 +7,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Shulker;
 
 /**
- * A closed castle shulker throws back whoever strikes it in melee. A shell shut as the blow lands, a blow from a
- * living attacker's own hand, and an attacker within reach are all needed; an arrow or a thrown snowball is not melee.
+ * A closed castle shulker throws back whoever strikes it in melee. A shell shut as the blow lands, a blow struck by a
+ * living attacker itself, and an attacker within reach are all needed; an arrow or a thrown snowball is not melee.
  */
 public final class ShulkerKnockback {
 	public static final double STRENGTH = 1.5;
@@ -24,7 +24,7 @@ public final class ShulkerKnockback {
 				return;
 			}
 			Entity direct = source.getDirectEntity();
-			if (direct instanceof LivingEntity attacker && direct == source.getEntity() && attacker.distanceTo(shulker) <= RANGE) {
+			if (direct instanceof LivingEntity attacker && attacker.distanceTo(shulker) <= RANGE) {
 				attacker.knockback(STRENGTH, shulker.getX() - attacker.getX(), shulker.getZ() - attacker.getZ(), source, 0.0F);
 				BehaviorLog.info("[END] shulkerKnockback attacker={} strength={}", attacker.getType().getDescriptionId(), STRENGTH);
 			}

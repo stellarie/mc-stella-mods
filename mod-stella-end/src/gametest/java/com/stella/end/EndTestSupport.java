@@ -40,6 +40,7 @@ final class EndTestSupport {
 		for (ServerPlayer leftover : List.copyOf(end.players())) {
 			server.getPlayerList().remove(leftover);
 		}
+		EndGameTestInit.dragonFightRuns = false;
 		clearMobs(end);
 		FloorSpawner.reset();
 		EndCastles.ensureBuilt(end);

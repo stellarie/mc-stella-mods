@@ -18,6 +18,8 @@ import net.minecraft.world.level.Level;
  */
 public final class EndGameTestInit implements ModInitializer {
 	static final BehaviorLog.Sink TEST_SINK = StellaEnd.LOGGER::info;
+	/** Whether the vanilla dragon fight ticks. Only the test of the exit portal switches it on. */
+	public static volatile boolean dragonFightRuns;
 	/** The tag of a fake player a test joined. */
 	static final String TEST_PLAYER_TAG = "mod-stella-end-test.player";
 	/** Where a castle mob loaded and how far the nearest player stood then. A test clears this before it reads it. */

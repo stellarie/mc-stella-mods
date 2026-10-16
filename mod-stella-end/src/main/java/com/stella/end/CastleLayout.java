@@ -31,7 +31,6 @@ public final class CastleLayout {
 		this.rest = rest;
 	}
 
-	/** The plan of a castle under a world seed. */
 	public static CastleLayout generate(final long seed) {
 		List<FloorPlan> floors = new ArrayList<>();
 		for (int number = 1; number <= EndCastle.FLOORS; number++) {
@@ -314,7 +313,6 @@ public final class CastleLayout {
 		return seed;
 	}
 
-	/** One floor's plan, 1 to {@link EndCastle#FLOORS}. */
 	public FloorPlan floor(final int number) {
 		return floors.get(number - 1);
 	}
@@ -329,8 +327,10 @@ public final class CastleLayout {
 		/** The steps of one climb: one floor of rise. */
 		public static final int STEPS = 16;
 		private static final int RING = 8;
-		/** Cells of the ceiling a stairwell leaves air: the last four steps open it, and the top step fills its own cell. */
-		public static final int CEILING_HOLES = 3;
+		/** Steps of a lap whose ceiling is open: the last ones, where a climber lifts a head past the slab. */
+		private static final int OPEN_CEILING_STEPS = 4;
+		/** Ceiling cells a stairwell leaves as air: the top step fills the last open cell with itself. */
+		public static final int CEILING_HOLES = OPEN_CEILING_STEPS - 1;
 		private static final int[][] CELLS = {{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {0, 1}};
 
 		/** The local x of step {@code k}. Steps go round the pillar, two laps to a floor. */
@@ -354,10 +354,10 @@ public final class CastleLayout {
 
 		/**
 		 * Whether the ceiling above step {@code k} must be open. A climber stepping off step 12 or later lifts a head
-		 * past the ceiling slab over the step they leave, so the last four steps of the climb have no slab above them.
+		 * past the slab over the step they leave, so the last four steps of the climb have no slab above them.
 		 */
 		public boolean overheadOpen(final int k) {
-			return k % RING >= RING - 4;
+			return k % RING >= RING - OPEN_CEILING_STEPS;
 		}
 
 		public int pillarX() {
@@ -400,7 +400,7 @@ public final class CastleLayout {
 		private final byte[] rooms;
 		private final int roomCount;
 		private final List<Door> doors;
-		private final @Nullable Shaft up;
+		private final Shaft up;
 		private final @Nullable Shaft arrival;
 		private final List<Chest> chests;
 		private final int landingX;
@@ -409,7 +409,7 @@ public final class CastleLayout {
 
 		FloorPlan(
 			final int number, final byte[] cells, final byte[] rooms, final int roomCount, final List<Door> doors,
-			final @Nullable Shaft up, final @Nullable Shaft arrival, final List<Chest> chests, final int landingX,
+			final Shaft up, final @Nullable Shaft arrival, final List<Chest> chests, final int landingX,
 			final int landingZ, final List<int[]> spawnCells
 		) {
 			this.number = number;
@@ -429,7 +429,6 @@ public final class CastleLayout {
 			return number;
 		}
 
-		/** {@link #OPEN}, {@link #WALL} or {@link #DOOR} at a local cell. */
 		public byte kind(final int x, final int z) {
 			return cells[x * EndCastle.SIZE + z];
 		}
@@ -447,8 +446,7 @@ public final class CastleLayout {
 			return doors;
 		}
 
-		/** The stairwell that climbs to the next level. Every floor has one. */
-		public @Nullable Shaft up() {
+		public Shaft up() {
 			return up;
 		}
 

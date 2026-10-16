@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.stella.end.test.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"GameTestDragonFightMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

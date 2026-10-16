@@ -164,6 +164,8 @@ public class CastleBuildGameTest {
 					BlockPos at = EndTestSupport.world(EndCastle.min(), up.stepX(0) - 1, EndCastle.standY(floor), up.stepZ(0));
 					net.minecraft.world.entity.monster.zombie.Zombie walker =
 						net.minecraft.world.entity.EntityTypes.ZOMBIE.create(end, net.minecraft.world.entity.EntitySpawnReason.MOB_SUMMONED);
+					// Claimed, so no other mod's spawn roll turns it elite, boss or baby: a big one cannot take a one-block stair.
+					LevelBridge.claim(walker);
 					walker.addTag(EndMobs.FLOOR_TAG + "0");
 					walker.snapTo(at.getX() + 0.5, at.getY() + 2, at.getZ() + 0.5, 0.0F, 0.0F);
 					walker.setPersistenceRequired();
@@ -243,6 +245,7 @@ public class CastleBuildGameTest {
 	public void theVanillaExitPortalStandsOnTheRooftopDeckAtTheOrigin(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		// The dragon fight makes the portal podium once a player stands in the End and its arena has loaded.
+		EndGameTestInit.dragonFightRuns = true;
 		EndTestSupport.joinOnFloor(helper, end, 1);
 		BlockPos centre = new BlockPos(0, EndCastle.ROOF_Y, 0);
 		helper.startSequence()

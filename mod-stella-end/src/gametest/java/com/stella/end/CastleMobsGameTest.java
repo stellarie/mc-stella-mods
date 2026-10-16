@@ -182,7 +182,9 @@ public class CastleMobsGameTest {
 		helper.assertTrue(Math.abs(ratio - 2.0) < 0.01, "the elite witch has " + elite.getMaxHealth() + " health against " + plain.getMaxHealth());
 		plain.discard();
 		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(player.hasEffect(MobEffects.WEAKNESS), "the aura has not weakened the player yet"))
+			// The aura's weakness is ambient; one from a thrown potion is not, and must not pass for it.
+			.thenWaitUntil(() -> helper.assertTrue(player.hasEffect(MobEffects.WEAKNESS) && player.getEffect(MobEffects.WEAKNESS).isAmbient(),
+				"the aura has not weakened the player yet"))
 			.thenExecute(() -> {
 				EndTestSupport.fresh(helper);
 				helper.assertTrue(elite.getAttribute(Attributes.MAX_HEALTH) != null, "the elite witch lost its health attribute");

@@ -42,7 +42,6 @@ public final class EndCastles {
 			&& chunkZ >= EndCastle.MIN_Z >> 4 && chunkZ <= (EndCastle.MIN_Z + EndCastle.SIZE - 1) >> 4;
 	}
 
-	/** The saved state of the End level. */
 	public static EndState state(final ServerLevel end) {
 		EndState state = ((AttachmentTarget) end).getAttached(STATE);
 		return state == null ? EndState.EMPTY : state;
@@ -52,7 +51,6 @@ public final class EndCastles {
 		((AttachmentTarget) end).setAttached(STATE, state);
 	}
 
-	/** The plan of this world's castle. */
 	public static CastleLayout layout(final ServerLevel end) {
 		long seed = end.getSeed();
 		if (cached == null || cached.seed() != seed) {
