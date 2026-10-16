@@ -1,0 +1,25 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-end-test-mod-stella-end",
+	"version": "1.0.0",
+	"name": "Stella End Castle game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.end.CastleLayoutGameTest",
+			"com.stella.end.CastleBuildGameTest",
+			"com.stella.end.CastleArrivalGameTest",
+			"com.stella.end.FloorSpawnerGameTest",
+			"com.stella.end.CastleMobsGameTest",
+			"com.stella.end.ShulkerKnockbackGameTest",
+			"com.stella.end.AbsentSiblingGameTest",
+			"com.stella.end.CastleTreasureGameTest"
+		],
+		"main": [
+			"com.stella.end.EndGameTestInit"
+		]
+	},
+	"depends": {
+		"mod-stella-end": "*"
+	}
+}

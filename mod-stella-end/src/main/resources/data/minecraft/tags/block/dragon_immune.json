@@ -1,0 +1,17 @@
+{
+	"replace": false,
+	"values": [
+		"minecraft:end_stone_bricks",
+		"minecraft:purpur_block",
+		"minecraft:purpur_pillar",
+		"minecraft:purpur_stairs",
+		"minecraft:sea_lantern",
+		"minecraft:end_stone_brick_wall",
+		"minecraft:chest",
+		"minecraft:ender_chest",
+		"minecraft:crafting_table",
+		"minecraft:anvil",
+		"minecraft:purple_bed",
+		"minecraft:barrier"
+	]
+}
