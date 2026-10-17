@@ -98,7 +98,13 @@ public class WyvernTweaksGameTest {
 	public void aFreedWyvernBreathesADragonBreathCloudAtAPlayerNowAndThenWhileOneWithARiderNeverDoes(final GameTestHelper helper) {
 		WyvernGameTest.Stand stand = WyvernGameTest.stand(helper);
 		ServerPlayer player = EndTestSupport.joinOnRoof(helper, stand.end(), 6.0, 6.0);
-		Cow cow = cow(stand.end(), player.position());
+		Vec3 home = player.position();
+		Cow cow = cow(stand.end(), home);
+		// The dragon's wings throw a player about, and the cow must stay where the breath is aimed.
+		helper.onEachTick(() -> {
+			player.setPos(home);
+			player.setDeltaMovement(Vec3.ZERO);
+		});
 		WyvernGameTest.Escort[] freed = new WyvernGameTest.Escort[1];
 		long[] freedAt = new long[1];
 		long[] due = new long[2];
@@ -139,7 +145,7 @@ public class WyvernTweaksGameTest {
 				boolean owned = cloud[0] != null && cloud[0].getOwner() == freed[0].wyvern();
 				boolean aimed = breath.target().equals(player.getUUID());
 				boolean onlyFreed = stand.state().breaths().stream().allMatch(each -> each.slot() == 0);
-				EndTestSupport.result("wyvernBreath", "due=" + due[0] + " slot=" + breath.slot() + " cloud=" + cloudSeen[0] + " life=" + cloudLife[0] + " off=" + off + " owned=" + owned + " cowLost=" + lost[0]
+				EndTestSupport.result("wyvernBreath", "due=" + due[0] + " slot=" + breath.slot() + " cloud=" + cloudSeen[0] + " life=" + cloudLife[0] + " off=" + off + " owned=" + owned + " cowOff=" + (cloud[0] == null ? Double.NaN : Math.hypot(cloud[0].getX() - cow.getX(), cloud[0].getZ() - cow.getZ())) + " cowLost=" + lost[0]
 					+ " breaths=" + stand.state().breaths().size());
 				double limit = DragonRules.WYVERN_BREATH_SCATTER * Math.sqrt(2.0) + 1.0E-6;
 				EndTestSupport.fresh(helper);
