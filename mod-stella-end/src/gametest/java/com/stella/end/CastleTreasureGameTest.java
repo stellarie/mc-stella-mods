@@ -16,7 +16,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -36,27 +39,41 @@ public class CastleTreasureGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:treasure_chests", maxTicks = 20)
-	public void everyFloorHoldsTwoRandomChestsAndOneVaultAtItsFixedPlace(final GameTestHelper helper) {
+	public void everyFloorHoldsItsTreasureAsThreeDoubleChestsAndNoSingleOne(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		BlockPos min = EndCastle.min();
 		StringBuilder bad = new StringBuilder();
 		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
-			int chests = 0;
+			int[] types = new int[ChestType.values().length];
 			for (int x = 0; x < EndCastle.SIZE; x++) {
 				for (int z = 0; z < EndCastle.SIZE; z++) {
 					for (int y = EndCastle.standY(floor); y < EndCastle.slabY(floor) + EndCastle.FLOOR_HEIGHT; y++) {
-						chests += EndTestSupport.state(end, min, x, y, z).is(Blocks.CHEST) ? 1 : 0;
+						BlockState state = EndTestSupport.state(end, min, x, y, z);
+						if (state.is(Blocks.CHEST)) {
+							types[state.getValue(ChestBlock.TYPE).ordinal()]++;
+						}
 					}
 				}
 			}
-			if (chests != 3) {
-				bad.append(" floor ").append(floor).append(" holds ").append(chests).append(" chests");
+			if (types[ChestType.SINGLE.ordinal()] != 0 || types[ChestType.LEFT.ordinal()] != 3 || types[ChestType.RIGHT.ordinal()] != 3) {
+				bad.append(" floor ").append(floor).append(" holds ").append(types[ChestType.SINGLE.ordinal()]).append(" single, ")
+					.append(types[ChestType.LEFT.ordinal()]).append(" left and ").append(types[ChestType.RIGHT.ordinal()]).append(" right halves");
 			}
+			int y = EndCastle.standY(floor);
 			for (CastleLayout.Chest spot : EndCastles.layout(end).floor(floor).chests()) {
-				BlockPos at = EndTestSupport.world(min, spot.x(), EndCastle.standY(floor), spot.z());
+				BlockState left = EndTestSupport.state(end, min, spot.x(), y, spot.z());
+				BlockState right = EndTestSupport.state(end, min, spot.partnerX(), y, spot.partnerZ());
+				boolean pair = left.is(Blocks.CHEST) && right.is(Blocks.CHEST) && left.getValue(ChestBlock.TYPE) == ChestType.LEFT
+					&& right.getValue(ChestBlock.TYPE) == ChestType.RIGHT && left.getValue(ChestBlock.FACING) == right.getValue(ChestBlock.FACING)
+					&& ChestBlock.getConnectedDirection(left) == spot.facing().getClockWise();
 				ResourceKey<LootTable> expected = spot.vault() ? CastleTreasure.vaultLoot(floor) : CastleTreasure.floorLoot();
-				if (!(end.getBlockEntity(at) instanceof ChestBlockEntity chest) || !expected.equals(chest.getLootTable())) {
-					bad.append(" floor ").append(floor).append(" chest at ").append(spot.x()).append(',').append(spot.z()).append(" does not hold ").append(expected.identifier());
+				ResourceKey<LootTable> onLeft = end.getBlockEntity(EndTestSupport.world(min, spot.x(), y, spot.z())) instanceof ChestBlockEntity chest ? chest.getLootTable() : null;
+				ResourceKey<LootTable> onRight = end.getBlockEntity(EndTestSupport.world(min, spot.partnerX(), y, spot.partnerZ())) instanceof ChestBlockEntity chest ? chest.getLootTable() : null;
+				if (!pair) {
+					bad.append(" floor ").append(floor).append(" chest at ").append(spot.x()).append(',').append(spot.z()).append(" is not a double chest");
+				} else if (!expected.equals(onLeft) || onRight != null) {
+					bad.append(" floor ").append(floor).append(" chest at ").append(spot.x()).append(',').append(spot.z()).append(" rolls ").append(onLeft).append(" and ").append(onRight)
+						.append(", expected ").append(expected.identifier()).append(" on one half");
 				}
 			}
 		}

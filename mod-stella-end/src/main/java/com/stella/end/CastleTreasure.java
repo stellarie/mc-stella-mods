@@ -1,22 +1,20 @@
 package com.stella.end;
 
-import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.storage.loot.LootTable;
 
 /**
- * The castle's chests: two random ones per floor and one fixed vault, each handed a loot table that fills it the first
- * time it opens. A table fills a chest once, so a vault never refills.
+ * The castle's chests: two random double chests per floor and one fixed vault, each half under rubble with its lid in
+ * view. The left half holds the loot table that fills the pair the first time it opens, so a vault never rolls twice.
  */
 public final class CastleTreasure {
-	private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
-
 	private CastleTreasure() {
 	}
 
@@ -28,19 +26,33 @@ public final class CastleTreasure {
 		return ResourceKey.create(Registries.LOOT_TABLE, StellaEnd.id("chests/vault_floor_" + floor));
 	}
 
-	/** Places the plan's chests and gives each its loot table. */
-	static void place(final ServerLevel level, final CastleLayout layout, final BlockPos min) {
+	/** Places the plan's double chests, gives each pair its loot table, and heaps rubble on one half. */
+	static void place(final CastleSite site) {
 		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
+			int y = EndCastle.standY(floor);
 			int index = 0;
-			for (CastleLayout.Chest chest : layout.floor(floor).chests()) {
-				BlockPos at = new BlockPos(min.getX() + chest.x(), EndCastle.standY(floor), min.getZ() + chest.z());
-				level.setBlock(at, Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, chest.facing()), FLAGS);
-				if (level.getBlockEntity(at) instanceof ChestBlockEntity entity) {
-					long seed = layout.seed() * 31L + floor * 7L + index;
+			for (CastleLayout.Chest chest : site.layout.floor(floor).chests()) {
+				Direction facing = chest.facing();
+				site.put(chest.x(), y, chest.z(), CastleBlocks.chest(facing, ChestType.LEFT));
+				site.put(chest.partnerX(), y, chest.partnerZ(), CastleBlocks.chest(facing, ChestType.RIGHT));
+				if (site.level.getBlockEntity(site.pos(chest.x(), y, chest.z())) instanceof ChestBlockEntity entity) {
+					long seed = site.layout.seed() * 31L + floor * 7L + index;
 					entity.setLootTable(chest.vault() ? vaultLoot(floor) : floorLoot(), seed);
 				}
+				rubble(site, chest, y);
 				index++;
 			}
+		}
+	}
+
+	/** Slabs and stairs over the right half and beside it, none of them whole blocks, so the pair still opens. */
+	private static void rubble(final CastleSite site, final CastleLayout.Chest chest, final int y) {
+		site.put(chest.partnerX(), y + 1, chest.partnerZ(), CastleBlocks.slab(Blocks.END_STONE_BRICK_SLAB, SlabType.BOTTOM));
+		Direction along = chest.facing().getClockWise();
+		int beyondX = chest.partnerX() + along.getStepX();
+		int beyondZ = chest.partnerZ() + along.getStepZ();
+		if (site.get(beyondX, y, beyondZ).isAir()) {
+			site.put(beyondX, y, beyondZ, CastleBlocks.stair(Blocks.END_STONE_BRICK_STAIRS, along.getOpposite(), Half.BOTTOM));
 		}
 	}
 }

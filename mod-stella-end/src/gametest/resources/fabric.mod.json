@@ -8,6 +8,10 @@
 		"fabric-gametest": [
 			"com.stella.end.CastleLayoutGameTest",
 			"com.stella.end.CastleBuildGameTest",
+			"com.stella.end.CastleGroundGameTest",
+			"com.stella.end.CastleStairsGameTest",
+			"com.stella.end.CastleSpawnGameTest",
+			"com.stella.end.CastleLightGameTest",
 			"com.stella.end.CastleArrivalGameTest",
 			"com.stella.end.FloorSpawnerGameTest",
 			"com.stella.end.CastleMobsGameTest",

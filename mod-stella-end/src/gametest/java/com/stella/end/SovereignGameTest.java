@@ -416,34 +416,34 @@ public class SovereignGameTest {
 			// A fireball in a chunk not yet entity ticking
 			// meets the load hook late.
 			// The test starts where that cannot happen.
-			.thenWaitUntil(() -> helper.assertTrue(end.isPositionEntityTicking(new net.minecraft.core.BlockPos(-12, y, 5)), "the arena is not entity ticking yet"))
+			.thenWaitUntil(() -> helper.assertTrue(end.isPositionEntityTicking(new net.minecraft.core.BlockPos(-6, y, 5)), "the arena is not entity ticking yet"))
 			.thenExecute(() -> {
-				rig.undead = UndeadBlazes.spawn(end, new Vec3(-13.0, y - 1, 5.0));
+				rig.undead = UndeadBlazes.spawn(end, new Vec3(-7.0, y - 1, 5.0));
 				helper.assertTrue(rig.undead != null, "no undead blaze was made");
 				rig.undead.setNoAi(true);
 				Blaze plain = EntityTypes.BLAZE.create(end, EntitySpawnReason.SPAWNER);
 				LevelBridge.claim(plain);
 				plain.setNoAi(true);
-				plain.snapTo(-13.0, y - 1, -5.0, 0.0F, 0.0F);
+				plain.snapTo(-7.0, y - 1, -5.0, 0.0F, 0.0F);
 				end.addFreshEntity(plain);
 				rig.level = LevelBridge.read(rig.undead);
 				rig.marked = rig.undead.getAttached(UndeadBlazes.MARK) != null && rig.undead.getAttached(UndeadBlazes.MARK) == UndeadBlazes.MARK_BLAZE;
 				// A blaze's own goal builds its fireball so.
 				// The hook must catch it on load.
 				SmallFireball slow = new SmallFireball(end, rig.undead, new Vec3(1.0, 0.0, 0.0));
-				slow.setPos(-12.0, y, 5.0);
+				slow.setPos(-6.0, y, 5.0);
 				end.addFreshEntity(slow);
 				SmallFireball vanilla = new SmallFireball(end, plain, new Vec3(1.0, 0.0, 0.0));
-				vanilla.setPos(-12.0, y, -5.0);
+				vanilla.setPos(-6.0, y, -5.0);
 				end.addFreshEntity(vanilla);
-				rig.victim = EndTestSupport.dummy(end, new Vec3(-9.0, y - 1.0, 5.0));
-				rig.control = EndTestSupport.dummy(end, new Vec3(-9.0, y - 1.0, -5.0));
+				rig.victim = EndTestSupport.dummy(end, new Vec3(-3.0, y - 1.0, 5.0));
+				rig.control = EndTestSupport.dummy(end, new Vec3(-3.0, y - 1.0, -5.0));
 				rig.charged = SoulCharges.is(slow);
 				rig.plainCharged = SoulCharges.is(vanilla);
 				// Other mods shorten harmful effects by stats.
 				// So the length is judged on the same victim,
 				// with the effect given by hand.
-				Zombie struck = EndTestSupport.dummy(end, new Vec3(-9.0, y - 1.0, 0.0));
+				Zombie struck = EndTestSupport.dummy(end, new Vec3(-3.0, y - 1.0, 0.0));
 				rig.expectedTicks = lengthOn(struck, UndeadBlazes.WITHER_TICKS, UndeadBlazes.WITHER_AMPLIFIER);
 				struck.hurtServer(end, end.damageSources().fireball(slow, rig.undead), 1.0F);
 				MobEffectInstance directEffect = struck.getEffect(MobEffects.WITHER);
