@@ -1,0 +1,36 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-end-test-mod-stella-end",
+	"version": "1.0.0",
+	"name": "Stella End Castle game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.end.CastleLayoutGameTest",
+			"com.stella.end.CastleBuildGameTest",
+			"com.stella.end.CastleArrivalGameTest",
+			"com.stella.end.FloorSpawnerGameTest",
+			"com.stella.end.CastleMobsGameTest",
+			"com.stella.end.ShulkerKnockbackGameTest",
+			"com.stella.end.AbsentSiblingGameTest",
+			"com.stella.end.CastleTreasureGameTest",
+			"com.stella.end.SovereignGameTest",
+			"com.stella.end.DragonPassiveGameTest",
+			"com.stella.end.DragonAttackGameTest",
+			"com.stella.end.WyvernGameTest",
+			"com.stella.end.DragonRoostGameTest",
+			"com.stella.end.DragonCrystalGameTest",
+			"com.stella.end.DragonDeathGameTest",
+			"com.stella.end.UltimateGearGameTest"
+		],
+		"main": [
+			"com.stella.end.EndGameTestInit"
+		]
+	},
+	"depends": {
+		"mod-stella-end": "*"
+	},
+	"mixins": [
+		"mod-stella-end-test.mixins.json"
+	]
+}

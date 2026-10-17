@@ -1,0 +1,88 @@
+{
+	"type": "minecraft:chest",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-end:void_shard",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 7,
+								"max": 9
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-end:ender_heart",
+					"weight": 1
+				},
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-end:shulker_carapace",
+					"weight": 1
+				},
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-end:wither_fang",
+					"weight": 1
+				},
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-end:void_walker_charm",
+					"weight": 1
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:tag",
+					"items": "#mod-stella-end:vault_books",
+					"expand": true
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:netherite_axe",
+					"modifier": [
+						{
+							"type": "minecraft:enchant_with_levels",
+							"levels": {
+								"type": "minecraft:uniform",
+								"min": 30,
+								"max": 39
+							},
+							"options": "#minecraft:on_random_loot"
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:loot_table",
+					"value": "minecraft:chests/end_city_treasure"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,19 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+rootProject.name = 'mod-stella-end'
+
+// The modpack builds from source beside this mod and substitutes for its coordinates below.
+// The mod reaches none of them at compile time; they join the game test runtime so each bridge has a sibling present.
+includeBuild '../mod-stella-mobs'
+includeBuild '../mod-stella-equips-enchants'
+includeBuild '../mod-stella-spells'
+includeBuild '../mod-stella-rpg'

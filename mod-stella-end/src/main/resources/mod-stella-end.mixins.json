@@ -1,0 +1,18 @@
+{
+	"required": true,
+	"package": "com.stella.end.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"EndPortalArrivalMixin",
+		"NaturalSpawnerMixin",
+		"ShulkerPeekAccessor",
+		"EnderDragonFightAccessor",
+		"LivingEntityDamageMixin",
+		"LivingEntityEffectMixin",
+		"SmithingMenuMixin",
+		"ItemCombinerAccess"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

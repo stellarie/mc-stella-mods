@@ -1,0 +1,69 @@
+{
+	"replace": false,
+	"values": [
+		{
+			"id": "mod-stella-spells:dragonfall",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:wardens_roar",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:time_lock",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:aegis_of_the_deep",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:void_well",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:wither_seal",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:phoenix_mantle",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:berserk",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:resurrection_ward",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:whirlwind",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:iron_skin",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:arrow_rain",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:explosive_arrow",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:vultures_eye",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:holy_arms",
+			"required": false
+		},
+		{
+			"id": "mod-stella-spells:steadfast_prayer",
+			"required": false
+		}
+	]
+}

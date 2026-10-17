@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-end",
+	"version": "${version}",
+	"name": "Stella End Castle",
+	"description": "The End as a level 100 endgame: a six floor castle of wither skeletons, endermen, witches and shulkers, a rest area and a rooftop.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.end.StellaEnd"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	},
+	"mixins": [
+		"mod-stella-end.mixins.json",
+		{
+			"config": "mod-stella-end.client.mixins.json",
+			"environment": "client"
+		}
+	]
+}
