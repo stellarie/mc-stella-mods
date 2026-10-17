@@ -81,6 +81,15 @@ public class WyvernTweaksGameTest {
 			.thenSucceed();
 	}
 
+	/** Stops the bows of the riders that stay: an arrow would kill the test player, or hurt the cow, in the freed wyvern's place. */
+	static void silence(final WyvernGameTest.Stand stand, final WyvernGameTest.Escort freed) {
+		for (WyvernGameTest.Escort pair : WyvernGameTest.escorts(stand.end(), stand.state())) {
+			if (pair != freed) {
+				pair.rider().setNoAi(true);
+			}
+		}
+	}
+
 	/** A cow with plenty of health. A breath cloud heals the undead, so a zombie would show nothing. */
 	static Cow cow(final ServerLevel end, final Vec3 at) {
 		Cow cow = EntityTypes.COW.create(end, EntitySpawnReason.SPAWNER);
@@ -116,6 +125,7 @@ public class WyvernTweaksGameTest {
 			.thenWaitUntil(() -> hushDragon(helper, stand))
 			.thenExecute(() -> {
 				freed[0] = WyvernGameTest.escorts(stand.end(), stand.state()).get(0);
+				silence(stand, freed[0]);
 				freed[0].rider().discard();
 				freedAt[0] = EndClock.now(stand.end());
 			})
@@ -186,6 +196,7 @@ public class WyvernTweaksGameTest {
 			.thenWaitUntil(() -> hushDragon(helper, stand))
 			.thenExecute(() -> {
 				freed[0] = WyvernGameTest.escorts(stand.end(), stand.state()).get(0);
+				silence(stand, freed[0]);
 				freed[0].rider().discard();
 				// The game's own bite would come as well as the swoop's, and one bite kills the test player.
 				freed[0].wyvern().setNoAi(true);
