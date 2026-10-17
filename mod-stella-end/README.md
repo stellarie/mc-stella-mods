@@ -24,10 +24,18 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
   pillars, a market stall, and a lean-to camp with crates and barrels. A paved way leads to the gate, a 3 wide door in the
   south wall of floor 1 under a canopy with banners.
 - **Stairs.** Every stair is a straight flight of 16 steps, 3 lanes wide. The slab over its last three steps is open, so a
-  mob can jump up them.
+  mob can jump up them. Each flight lies against a wall along one whole side, never in the middle of a room.
   - Floors 1 to 3 have one flight each, in a wing of the ring of rooms. None stands in the courtyard.
   - Floor 4 has four flights to floor 5, one along each outer wall of the middle room.
   - Floor 5 has one flight into the south-east corner of the arena. Its middle step is `CastleLayout.sovereignTrigger()`.
+    A wall along the south side of the flight backs it, with one doorway cell at its west end. The floor 4 flights keep all
+    four pinwheel walls, so each lies against a wall along its whole side.
+  - Every run has a rail column on each side, one lane outside it. A low wall climbs the column a step at a time, and a
+    purpur pillar under it at steps 3, 7 and 11 holds it up. A wall or a doorway line takes the place of a rail where it
+    already stands. A low wall also rings the hole where a run comes up through a slab.
+  - The flight of floor 1 stands in a closed shaft. Walls shut its run and its vestibule, three rows deep at its foot,
+    and the only doorway is in the high side wall of the vestibule. The plan draws floor 1 again until no cell of the run
+    can be seen from the gate or from the portal landing, the two ways a player comes into the castle.
 - **Floors 1 to 3.** Rooms stand in a ring round a 12 by 12 courtyard. Floor 1 rooms have doorways to it. Floors 2 and 3
   have windows onto it. The courtyard is open air from the floor 1 ground to the floor 4 slab. It holds a fountain, grass,
   flowers and three trees. A world seed and a floor number fix the doorways and the optional merges of rooms.
@@ -42,10 +50,14 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
   and a row of empty chests, and no bed. A stair climbs from it to a hatch in the rooftop, beside the parapet.
 - **Rooftop.** A disc 46 blocks across, centred on the End origin, with a parapet 4 blocks tall and covered arches cut
   into it. The corner pillars rise into it as towers. A ring of half walls, pillar stumps and rubble gives cover. The
-  exit portal at the centre and four lanes to it stay clear. A solid crown of masonry carries the disc.
-- **Dressing.** Every room has props, and windows of glass panes and iron bars. Some have a partial ceiling or a ledge
-  with a ladder. The plan sets 2 to 4 candles in every room. They are the only light: the castle holds no other block
-  that gives light.
+  exit portal at the centre and four lanes to it stay clear. A solid crown of masonry carries the disc. A house with a roof
+  four blocks over the deck covers the hatch. Three or four ruined rooms stand in the corners of the deck, off the lanes, the
+  hatch and the parapet. A ruin is 5 to 7 blocks wide and 4 to 6 blocks tall, with pillars at its corners, broken walls, two
+  open doorways and a roof of slabs in places. The plan draws their number and places from the world seed.
+- **Dressing.** Every room has props, and windows of glass panes and iron bars. Some have a partial ceiling. Every floor
+  from 1 to 5 holds at least two plank ledges, each 3 to 6 cells long and six blocks over the floor, with bars one block
+  high on the open edge and a ladder at the end. The plan keeps them, and the archers spawn on them. The plan sets 2 to 4
+  candles in every room. They are the only light: the castle holds no other block that gives light.
 - The castle is built once, on the first load of a castle chunk or on the first arrival, whichever comes first. The
   End level saves a `built` flag.
 - The castle blocks are in `minecraft:dragon_immune`, so the vanilla dragon cannot break them.
@@ -65,20 +77,31 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
 - Every 40 ticks it tops the floor up to 24 hostile mobs, 4 at a time. The count comes from a recorded set of
   identities that entity load and unload events keep. A floor waits until all four castle chunks have loaded.
 - A spawn stands on solid ground in a room, clear of walls, stairs and props, and at least 10 blocks from every player.
-- The mix is 70 per cent wither skeleton, 15 per cent enderman and 15 per cent shulker. Floors 1 and 2 give the
-  shulker share to wither skeletons.
-- Floors 1 to 5 each keep one witch alive. It counts outside the 24. The floor 5 witch is elite.
+- The mix is 60 per cent wither skeleton, 25 per cent skeleton archer and 15 per cent shulker. Floors 1 and 2 give the
+  shulker share to wither skeletons. The castle spawns no witch and no enderman. A skeleton archer spawns on a ledge.
+- One wither skeleton in ten rides a skeleton horse. The horse takes the cell and not the cap: only the rider counts.
 - Every castle mob is persistent, carries a `mod-stella-end.floor_N` tag, and drops none of its kit.
 
 ### The mobs
 
-- Wither skeleton: netherite sword, shield in the off hand, iron armour. A local shield goal raises the shield when a
-  target is 2.5 to 6 blocks away. The goal stands aside when the mobs mod has put its own shield goal on the mob.
-- Enderman: it targets the nearest player within 16 blocks on spawn and every 100 ticks. It needs no eye contact.
+- Wither skeleton: moves at 0.7 of its base speed and hits at 1.5 times its base damage. It wears full netherite with
+  three random enchantments on every piece and on the sword, and holds a thorns 4 shield in the off hand. When the equips
+  mod is present the sword also holds exactly one of venom 4, chill 4 and waveform 4. The random pool is every
+  enchantment of the registry that supports the item, curses left out. `MobGear` holds these helpers, and any later mob
+  in enchanted netherite reuses them. A local shield goal raises the shield when a target is 2.5 to 6 blocks away. The goal
+  stands aside when the mobs mod has put its own shield goal on the mob.
+- A wither skeleton blinks next to a target more than 8 blocks away, then waits 160 ticks. The landing lies 2.5 to 4.5 blocks
+  from the target, on solid ground, inside the castle volume, with room for the whole mob and its mount
+  (`CastleTeleport`, `TeleportChaseGoal`).
+- Mount: a skeleton horse of level 95, tamed. Players within 5 blocks of it get slowness I, refreshed every 20 ticks. The rider
+  steers the horse, which goes 200 ticks after its rider is gone (`MountGoals`).
+- Skeleton archer: level 110 on every floor, full netherite, a bow. In sight of a target within 24 blocks it looses a volley of
+  12 burning arrows, 3 ticks apart, standing still, then rests 100 ticks. A hurt archer blinks 8 to 16 blocks away, then waits
+  600 ticks (`ArcherVolleyGoal`, `HurtTeleportGoal`).
+- Every timer of hundreds of ticks reads the End clock, so a game test moves it with `EndClock.advance`.
 - Shulker: a melee hit on a closed shulker, from within 4 blocks, throws the attacker back with strength 1.5. An open
   shulker, a far hit, and a projectile do nothing.
-- Elite witch: twice the health, level plus 5, and an aura that weakens players within 8 blocks.
-- Levels: floor `n` mobs are level `100 + 3 * (n - 1)`, 100 to 115. The elite witch is floor level plus 5.
+- Levels: floor `n` wither skeletons are level `100 + 3 * (n - 1)`, 100 to 115. Archers are level 110 and horses level 95.
 
 ### Treasure
 
@@ -194,7 +217,10 @@ Behaviour lines go through the mod logger at INFO from the game test source set 
 ## Manual acceptance
 
 - Walk from the gate to the rooftop and judge the look of the yard, the rooms, the stairs, the dressing and the mob density.
+  Judge the rails and pillars of the stairs, the shaft of the first flight, the archers on their ledges, the roof over the hatch
+  and the ruined rooms on the rooftop.
 - Open one vault on a floor and read its contents.
+- Fight a wither skeleton on its horse, and an archer: judge the blink, the volley, the slowness aura and the difficulty.
 - Fight the Sovereign, then the dragon. Judge the flight, the swoop, the roost and the difficulty.
 - Watch an undead blaze and the Sovereign on a client: both draw grey.
 - Smith one piece of the ultimate gear at a smithing table and refine it at the equips anvil.

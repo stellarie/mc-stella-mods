@@ -16,11 +16,10 @@ public class FloorSpawnerGameTest {
 	static final int FILL_TICKS = (FloorSpawner.CAP / FloorSpawner.BATCH + 4) * FloorSpawner.INTERVAL;
 
 	/** Live entities of the End carrying a floor's tag, counted from the level and not from the spawner's record. */
-	static List<Mob> inWorld(final ServerLevel end, final int floor, final boolean witches) {
+	static List<Mob> inWorld(final ServerLevel end, final int floor) {
 		List<Mob> found = new ArrayList<>();
 		end.getAllEntities().forEach(entity -> {
-			if (entity instanceof Mob mob && mob.isAlive() && mob.entityTags().contains(EndMobs.FLOOR_TAG + floor)
-				&& EndMobs.isWitch(mob) == witches) {
+			if (entity instanceof Mob mob && mob.isAlive() && mob.entityTags().contains(EndMobs.FLOOR_TAG + floor)) {
 				found.add(mob);
 			}
 		});
@@ -36,10 +35,7 @@ public class FloorSpawnerGameTest {
 				bad.append(" floor ").append(floor).append(" is ").append(EndLevels.floorLevel(floor));
 			}
 		}
-		if (EndLevels.eliteWitchLevel(5) != 117) {
-			bad.append(" the floor 5 elite witch is ").append(EndLevels.eliteWitchLevel(5));
-		}
-		EndTestSupport.result("spawnerLevelsFormula", "floor1=" + EndLevels.floorLevel(1) + " floor6=" + EndLevels.floorLevel(6) + " eliteWitch5=" + EndLevels.eliteWitchLevel(5));
+		EndTestSupport.result("spawnerLevelsFormula", "floor1=" + EndLevels.floorLevel(1) + " floor6=" + EndLevels.floorLevel(6));
 		helper.assertTrue(bad.isEmpty(), "levels off the plan:" + bad);
 		helper.succeed();
 	}
@@ -52,7 +48,7 @@ public class FloorSpawnerGameTest {
 		int[] peak = new int[EndCastle.FLOORS + 1];
 		helper.onEachTick(() -> {
 			for (int f = 1; f <= EndCastle.FLOORS; f++) {
-				peak[f] = Math.max(peak[f], Math.max(FloorSpawner.hostiles(end, f).size(), inWorld(end, f, false).size()));
+				peak[f] = Math.max(peak[f], Math.max(FloorSpawner.hostiles(end, f).size(), inWorld(end, f).size()));
 			}
 		});
 		helper.startSequence()
@@ -61,7 +57,7 @@ public class FloorSpawnerGameTest {
 			.thenIdle(300)
 			.thenExecute(() -> {
 				int recorded = FloorSpawner.hostiles(end, floor).size();
-				int physical = inWorld(end, floor, false).size();
+				int physical = inWorld(end, floor).size();
 				StringBuilder over = new StringBuilder();
 				for (int f = 1; f <= EndCastle.FLOORS; f++) {
 					if (peak[f] > FloorSpawner.CAP) {
@@ -112,7 +108,7 @@ public class FloorSpawnerGameTest {
 			.thenExecute(() -> {
 				int total = 0;
 				for (int f = 1; f <= EndCastle.FLOORS; f++) {
-					total += FloorSpawner.hostiles(end, f).size() + inWorld(end, f, false).size() + inWorld(end, f, true).size();
+					total += FloorSpawner.hostiles(end, f).size() + inWorld(end, f).size();
 				}
 				EndTestSupport.result("spawnerFar", "mobs=" + total + " playerAt=" + faraway.blockPosition());
 				EndTestSupport.fresh(helper);
@@ -128,49 +124,10 @@ public class FloorSpawnerGameTest {
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(FloorSpawner.hostiles(end, 5).size() == FloorSpawner.CAP, "floor 5 is not full yet"))
 			.thenExecute(() -> {
-				int six = FloorSpawner.hostiles(end, EndCastle.FLOORS).size() + inWorld(end, EndCastle.FLOORS, false).size()
-					+ inWorld(end, EndCastle.FLOORS, true).size();
+				int six = FloorSpawner.hostiles(end, EndCastle.FLOORS).size() + inWorld(end, EndCastle.FLOORS).size();
 				EndTestSupport.result("spawnerFloorSix", "floorSixMobs=" + six + " floorFive=" + FloorSpawner.hostiles(end, 5).size());
 				EndTestSupport.fresh(helper);
 				helper.assertTrue(six == 0, "floor 6 holds " + six + " castle mobs");
-			})
-			.thenSucceed();
-	}
-
-	@GameTest(environment = "mod-stella-end-test:spawner_witch", maxTicks = FILL_TICKS + 100)
-	public void everyActiveFloorKeepsOneWitchOutsideTheCapAndFloorFiveHoldsTheEliteOne(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		EndTestSupport.joinOnFloor(helper, end, 3);
-		helper.startSequence()
-			.thenWaitUntil(() -> {
-				for (int f = 1; f <= 5; f++) {
-					helper.assertTrue(FloorSpawner.witch(end, f) != null, "floor " + f + " has no witch yet");
-				}
-			})
-			.thenExecute(() -> {
-				StringBuilder bad = new StringBuilder();
-				int elites = 0;
-				for (int f = 1; f <= 5; f++) {
-					List<Mob> witches = inWorld(end, f, true);
-					if (witches.size() != 1) {
-						bad.append(" floor ").append(f).append(" holds ").append(witches.size()).append(" witches");
-					}
-					for (Mob witch : witches) {
-						elites += EndMobs.isElite(witch) ? 1 : 0;
-						if (EndMobs.isElite(witch) != (f == 5)) {
-							bad.append(" floor ").append(f).append(" witch elite=").append(EndMobs.isElite(witch));
-						}
-					}
-					if (FloorSpawner.hostiles(end, f).stream().anyMatch(EndMobs::isWitch)) {
-						bad.append(" floor ").append(f).append(" counts its witch in the cap");
-					}
-				}
-				if (elites != 1) {
-					bad.append(" the castle holds ").append(elites).append(" elite witches");
-				}
-				EndTestSupport.result("spawnerWitch", "elites=" + elites + " bad=" + bad.length());
-				EndTestSupport.fresh(helper);
-				helper.assertTrue(bad.isEmpty(), "witch faults:" + bad);
 			})
 			.thenSucceed();
 	}
@@ -211,13 +168,13 @@ public class FloorSpawnerGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:spawner_levels", maxTicks = FILL_TICKS + 100)
-	public void everyCastleMobHasLevelOneHundredOrMoreAndItsFloorsLevel(final GameTestHelper helper) {
+	public void everyCastleMobHasLevelOneHundredOrMoreAndItsFloorsLevelOrTheArchersFixedOne(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		EndTestSupport.joinOnFloor(helper, end, 3);
 		helper.startSequence()
 			.thenWaitUntil(() -> {
 				for (int f = 1; f <= 5; f++) {
-					helper.assertTrue(FloorSpawner.hostiles(end, f).size() == FloorSpawner.CAP && FloorSpawner.witch(end, f) != null, "floor " + f + " is not full yet");
+					helper.assertTrue(FloorSpawner.hostiles(end, f).size() == FloorSpawner.CAP, "floor " + f + " is not full yet");
 				}
 			})
 			.thenExecute(() -> {
@@ -225,11 +182,9 @@ public class FloorSpawnerGameTest {
 				int checked = 0;
 				int lowest = Integer.MAX_VALUE;
 				for (int f = 1; f <= 5; f++) {
-					List<Mob> all = new ArrayList<>(FloorSpawner.hostiles(end, f));
-					all.add(FloorSpawner.witch(end, f));
-					for (Mob mob : all) {
+					for (Mob mob : FloorSpawner.hostiles(end, f)) {
 						int level = LevelBridge.read(mob);
-						int expected = EndMobs.isElite(mob) ? EndLevels.eliteWitchLevel(f) : EndLevels.floorLevel(f);
+						int expected = EndMobs.isArcher(mob) ? EndLevels.ARCHER : EndLevels.floorLevel(f);
 						checked++;
 						lowest = Math.min(lowest, level);
 						if (level < 100 || level != expected) {

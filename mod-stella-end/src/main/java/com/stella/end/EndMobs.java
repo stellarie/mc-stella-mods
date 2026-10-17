@@ -1,41 +1,49 @@
 package com.stella.end;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enderman;
-import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.animal.equine.SkeletonHorse;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
 import org.jspecify.annotations.Nullable;
 
 /** The castle's mobs: what each floor spawns, and how each one is kitted, levelled and recorded. */
 public final class EndMobs {
 	public static final String FLOOR_TAG = "mod-stella-end.floor_";
-	public static final String WITCH_TAG = "mod-stella-end.witch";
-	public static final String ELITE_TAG = "mod-stella-end.elite";
+	public static final String ARCHER_TAG = Factions.PREFIX + "archer";
+	public static final String MOUNT_TAG = Factions.PREFIX + "mount";
 	/** The roll space of {@link #pick}: shares are parts of this. */
 	public static final int ROLLS = 1000;
 	public static final int FIRST_SHULKER_FLOOR = 3;
-	public static final int ELITE_WITCH_FLOOR = 5;
-	/** The elite witch multiplies its total health by two. */
-	private static final Identifier ELITE_HEALTH = StellaEnd.id("elite_witch_health");
+	/** Parts of {@link #ROLLS} of the castle wither skeletons that ride a skeleton horse: one in ten. */
+	public static final int MOUNT_SHARE = 100;
+	/** A castle wither skeleton moves at this part of its base speed and hits at this multiple of its base damage. */
+	public static final double SPEED_FACTOR = 0.7;
+	public static final double DAMAGE_FACTOR = 1.5;
+	public static final Identifier SPEED_ID = StellaEnd.id("castle_skeleton_speed");
+	public static final Identifier DAMAGE_ID = StellaEnd.id("castle_skeleton_damage");
 	/** The name, never the class, of the mobs mod's own shield goal: the mod is optional. */
 	private static final String SHIELD_GOAL_OF_MOBS = "ShieldUseGoal";
 
 	public enum Kind {
 		WITHER_SKELETON,
-		ENDERMAN,
+		ARCHER,
 		SHULKER
 	}
 
@@ -46,8 +54,8 @@ public final class EndMobs {
 	public static int share(final int floor, final Kind kind) {
 		boolean shulkers = floor >= FIRST_SHULKER_FLOOR;
 		return switch (kind) {
-			case WITHER_SKELETON -> shulkers ? 700 : 850;
-			case ENDERMAN -> 150;
+			case WITHER_SKELETON -> shulkers ? 600 : 750;
+			case ARCHER -> 250;
 			case SHULKER -> shulkers ? 150 : 0;
 		};
 	}
@@ -57,71 +65,77 @@ public final class EndMobs {
 		if (roll < skeletons) {
 			return Kind.WITHER_SKELETON;
 		}
-		return roll < skeletons + share(floor, Kind.ENDERMAN) ? Kind.ENDERMAN : Kind.SHULKER;
+		return roll < skeletons + share(floor, Kind.ARCHER) ? Kind.ARCHER : Kind.SHULKER;
 	}
 
-	/** Spawns a castle mob with its kit and level, standing at {@code feet}. Null when the level refuses it. */
+	/** Whether a new castle wither skeleton rides a skeleton horse. */
+	public static boolean rollMount(final RandomSource random) {
+		return random.nextInt(ROLLS) < MOUNT_SHARE;
+	}
+
+	/** Spawns a castle mob with its kit and level, standing at {@code feet}. A wither skeleton rides by chance. Null when the level refuses it. */
 	public static @Nullable Mob spawn(final ServerLevel end, final int floor, final Kind kind, final BlockPos feet) {
+		return spawn(end, floor, kind, feet, kind == Kind.WITHER_SKELETON && rollMount(end.getRandom()));
+	}
+
+	/** As {@link #spawn(ServerLevel, int, Kind, BlockPos)}, with the ride decided by the caller. Only a wither skeleton can ride. */
+	public static @Nullable Mob spawn(final ServerLevel end, final int floor, final Kind kind, final BlockPos feet, final boolean mounted) {
 		Mob mob = switch (kind) {
 			case WITHER_SKELETON -> create(end, EntityTypes.WITHER_SKELETON);
-			case ENDERMAN -> create(end, EntityTypes.ENDERMAN);
+			case ARCHER -> create(end, EntityTypes.SKELETON);
 			case SHULKER -> create(end, EntityTypes.SHULKER);
 		};
 		if (mob == null) {
 			return null;
 		}
-		prepare(mob, floor, feet, EndLevels.floorLevel(floor));
+		prepare(mob, floor, feet, kind == Kind.ARCHER ? EndLevels.ARCHER : EndLevels.floorLevel(floor));
 		if (mob instanceof WitherSkeleton skeleton) {
-			kit(skeleton);
+			kit(end, skeleton);
+		}
+		if (mob instanceof Skeleton archer) {
+			bow(archer);
+		}
+		SkeletonHorse horse = null;
+		if (mounted && mob instanceof WitherSkeleton) {
+			horse = mount(end, feet);
+			if (horse == null) {
+				return null;
+			}
 		}
 		if (!end.addFreshEntity(mob)) {
+			if (horse != null) {
+				horse.discard();
+			}
 			return null;
+		}
+		if (horse != null) {
+			mob.startRiding(horse, true, false);
 		}
 		if (mob instanceof WitherSkeleton skeleton) {
 			guard(skeleton);
+			skeleton.getGoalSelector().addGoal(1, new TeleportChaseGoal(skeleton));
 		}
-		if (mob instanceof Enderman enderman) {
-			hunt(end, enderman);
+		if (mob instanceof Skeleton archer) {
+			archer.getGoalSelector().addGoal(1, new HurtTeleportGoal(archer));
+			archer.getGoalSelector().addGoal(2, new ArcherVolleyGoal(archer));
 		}
 		return mob;
 	}
 
-	/** Spawns the floor's witch: the elite one on floor 5. Null for a floor with no witch or when the level refuses it. */
-	public static @Nullable Witch spawnWitch(final ServerLevel end, final int floor, final BlockPos feet) {
-		if (floor < 1 || floor > ELITE_WITCH_FLOOR) {
+	/** The level 95 skeleton horse of a mounted wither skeleton, added to the level; null when the level refuses it. */
+	private static @Nullable SkeletonHorse mount(final ServerLevel end, final BlockPos feet) {
+		SkeletonHorse horse = create(end, EntityTypes.SKELETON_HORSE);
+		if (horse == null) {
 			return null;
 		}
-		Witch witch = create(end, EntityTypes.WITCH);
-		if (witch == null) {
-			return null;
-		}
-		boolean elite = floor == ELITE_WITCH_FLOOR;
-		prepare(witch, floor, feet, elite ? EndLevels.eliteWitchLevel(floor) : EndLevels.floorLevel(floor));
-		witch.addTag(WITCH_TAG);
-		if (elite) {
-			witch.addTag(ELITE_TAG);
-			witch.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(new AttributeModifier(ELITE_HEALTH, 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-			witch.setHealth(witch.getMaxHealth());
-			witch.getGoalSelector().addGoal(1, new EliteWitchAuraGoal(witch));
-		}
-		return end.addFreshEntity(witch) ? witch : null;
-	}
-
-	/** An enderman takes the nearest player within hunting range as its target, with no eye contact asked. */
-	static void hunt(final ServerLevel end, final Enderman enderman) {
-		ServerPlayer nearest = null;
-		double best = FloorSpawner.HUNT_RANGE;
-		for (ServerPlayer player : end.players()) {
-			double distance = player.distanceTo(enderman);
-			if (player.isAlive() && !player.isSpectator() && !player.isCreative() && distance <= best) {
-				nearest = player;
-				best = distance;
-			}
-		}
-		if (nearest != null && enderman.getTarget() != nearest) {
-			enderman.setTarget(nearest);
-			BehaviorLog.info("[END] hunt floor={} distance={}", floorOf(enderman), best);
-		}
+		LevelBridge.claim(horse);
+		horse.addTag(MOUNT_TAG);
+		horse.setTamed(true);
+		horse.snapTo(feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, horse.getRandom().nextFloat() * 360.0F, 0.0F);
+		horse.setPersistenceRequired();
+		LevelBridge.apply(horse, EndLevels.MOUNT);
+		horse.getGoalSelector().addGoal(1, new MountGoals.Aura(horse));
+		return end.addFreshEntity(horse) ? horse : null;
 	}
 
 	private static <T extends Mob> @Nullable T create(final ServerLevel end, final EntityType<T> type) {
@@ -155,24 +169,44 @@ public final class EndMobs {
 		return floorOf(entity) > 0;
 	}
 
-	public static boolean isElite(final Entity entity) {
-		return entity.entityTags().contains(ELITE_TAG);
+	public static boolean isArcher(final Entity entity) {
+		return entity.entityTags().contains(ARCHER_TAG);
 	}
 
-	public static boolean isWitch(final Entity entity) {
-		return entity.entityTags().contains(WITCH_TAG);
-	}
-
-	/** A netherite sword, a shield and iron armour; none of it drops, since treasure comes from chests. */
-	private static void kit(final WitherSkeleton skeleton) {
-		skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.NETHERITE_SWORD));
-		skeleton.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
-		skeleton.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
-		skeleton.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
-		skeleton.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
-		skeleton.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
+	/**
+	 * Slower and harder-hitting than its base, in full netherite with three random enchantments on every piece and on the
+	 * sword, a thorns shield in the off hand, and nothing that drops: treasure comes from chests.
+	 */
+	private static void kit(final ServerLevel end, final WitherSkeleton skeleton) {
+		Registry<Enchantment> enchantments = end.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		RandomSource random = skeleton.getRandom();
+		skeleton.setItemSlot(EquipmentSlot.MAINHAND, MobGear.skeletonSword(random, enchantments));
+		skeleton.setItemSlot(EquipmentSlot.OFFHAND, MobGear.thornsShield(enchantments));
+		MobGear.netheriteArmor(skeleton, MobGear.SKELETON_ENCHANTS, random, enchantments);
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			skeleton.setDropChance(slot, 0.0F);
+		}
+		scale(skeleton, Attributes.MOVEMENT_SPEED, SPEED_ID, SPEED_FACTOR);
+		scale(skeleton, Attributes.ATTACK_DAMAGE, DAMAGE_ID, DAMAGE_FACTOR);
+		skeleton.addTag(Factions.PREFIX + "wither_skeleton");
+	}
+
+	/** Multiplies an attribute by a factor of what it is after every other modifier, so a level's scaling stays under it. */
+	private static void scale(final Mob mob, final net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, final Identifier id, final double factor) {
+		AttributeInstance instance = mob.getAttribute(attribute);
+		if (instance != null) {
+			instance.removeModifier(id);
+			instance.addPermanentModifier(new AttributeModifier(id, factor - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+		}
+	}
+
+	/** A skeleton archer wears full netherite and holds a bow; the volley and the escape goals follow once it stands in the level. */
+	private static void bow(final Skeleton archer) {
+		archer.addTag(ARCHER_TAG);
+		MobGear.netheriteArmor(archer, 0, archer.getRandom(), archer.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT));
+		archer.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			archer.setDropChance(slot, 0.0F);
 		}
 	}
 

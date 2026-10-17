@@ -2,10 +2,8 @@ package com.stella.end;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -38,6 +36,7 @@ final class CastleDecor {
 		}
 		railings(site);
 		hall(site, site.layout.floor(EndCastle.FLOORS), site.random(106));
+		stairwork(site);
 	}
 
 	// -- Windows -------------------------------------------------------------------------------------------------------
@@ -132,7 +131,9 @@ final class CastleDecor {
 					break;
 				}
 			}
-			mezzanine(site, plan, room, slab, random);
+		}
+		for (CastleLayout.Ledge ledge : plan.ledges()) {
+			ledge(site, ledge, slab);
 		}
 	}
 
@@ -191,7 +192,7 @@ final class CastleDecor {
 			site.put(x, slab + TOP, z, CastleBlocks.COBWEB);
 			int nx = x - toWall.getStepX();
 			int nz = z - toWall.getStepZ();
-			if (calm(plan, nx, nz)) {
+			if (plan.calm(nx, nz)) {
 				site.putIfAir(nx, slab + TOP, nz, CastleBlocks.COBWEB);
 			}
 		} else if (roll < 62) {
@@ -199,29 +200,12 @@ final class CastleDecor {
 		}
 	}
 
-	/** Cells a roof or a ledge may use: open floor in a room, with no stair or doorway close by. */
-	private static boolean calm(final CastleLayout.FloorPlan plan, final int x, final int z) {
-		if (x < 1 || z < 1 || x > SIZE - 2 || z > SIZE - 2 || plan.kind(x, z) != CastleLayout.OPEN || plan.room(x, z) == 0) {
-			return false;
-		}
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dz = -1; dz <= 1; dz++) {
-				int nx = x + dx;
-				int nz = z + dz;
-				if (plan.stairAt(nx, nz) || plan.kind(nx, nz) == CastleLayout.DOOR || plan.kind(nx, nz) == CastleLayout.VOID) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
 	/** What is left of a ceiling: two slabs hung against the wall, high over the floor. Whether the cell took them. */
 	private static boolean cover(final CastleSite site, final CastleLayout.FloorPlan plan, final int[] edge, final int slab) {
 		Direction inward = Direction.from2DDataValue(edge[2]).getOpposite();
 		int nx = edge[0] + inward.getStepX();
 		int nz = edge[1] + inward.getStepZ();
-		if (!calm(plan, edge[0], edge[1]) || !calm(plan, nx, nz) || plan.room(nx, nz) != plan.room(edge[0], edge[1])) {
+		if (!plan.calm(edge[0], edge[1]) || !plan.calm(nx, nz) || plan.room(nx, nz) != plan.room(edge[0], edge[1])) {
 			return false;
 		}
 		BlockState roof = CastleBlocks.slab(Blocks.END_STONE_BRICK_SLAB, SlabType.TOP);
@@ -230,42 +214,18 @@ final class CastleDecor {
 		return true;
 	}
 
-	/** A plank ledge, two cells deep and six long, six blocks over the floor, with bars on its open edge and a ladder at its end. */
-	private static void mezzanine(final CastleSite site, final CastleLayout.FloorPlan plan, final int room, final int slab, final Random random) {
-		List<int[]> edges = plan.edges().stream().filter(edge -> plan.room(edge[0], edge[1]) == room).toList();
-		Set<Long> edgeSet = new HashSet<>();
-		for (int[] edge : edges) {
-			edgeSet.add((long) edge[0] * SIZE + edge[1]);
+	/** A plank ledge, two cells deep, six blocks over the floor, with bars on its open edge and a ladder at its end. */
+	private static void ledge(final CastleSite site, final CastleLayout.Ledge ledge, final int slab) {
+		BlockState planks = CastleBlocks.PLANKS;
+		int deck = slab + CastleLayout.Ledge.RISE;
+		for (int i = 0; i < ledge.length(); i++) {
+			site.put(ledge.x(i), deck, ledge.z(i), planks);
+			site.put(ledge.openX(i), deck, ledge.openZ(i), planks);
+			site.putShaped(ledge.openX(i), deck + 1, ledge.openZ(i), CastleBlocks.BARS);
 		}
-		for (int[] edge : edges) {
-			Direction toWall = Direction.from2DDataValue(edge[2]);
-			Direction inward = toWall.getOpposite();
-			Direction along = toWall.getClockWise();
-			boolean fits = true;
-			for (int i = 0; i <= 6 && fits; i++) {
-				int x = edge[0] + along.getStepX() * i;
-				int z = edge[1] + along.getStepZ() * i;
-				fits = edgeSet.contains((long) x * SIZE + z) && calm(plan, x, z) && calm(plan, x + inward.getStepX(), z + inward.getStepZ())
-					&& plan.room(x + inward.getStepX(), z + inward.getStepZ()) == room;
-			}
-			if (!fits) {
-				continue;
-			}
-			BlockState ledge = CastleBlocks.PLANKS;
-			for (int i = 0; i < 6; i++) {
-				int x = edge[0] + along.getStepX() * i;
-				int z = edge[1] + along.getStepZ() * i;
-				site.put(x, slab + 6, z, ledge);
-				site.put(x + inward.getStepX(), slab + 6, z + inward.getStepZ(), ledge);
-				site.putShaped(x + inward.getStepX(), slab + 7, z + inward.getStepZ(), CastleBlocks.BARS);
-			}
-			int lx = edge[0] + along.getStepX() * 6;
-			int lz = edge[1] + along.getStepZ() * 6;
-			BlockState ladder = Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, inward);
-			for (int up = 1; up <= 7; up++) {
-				site.put(lx, slab + up, lz, ladder);
-			}
-			return;
+		BlockState ladder = Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, ledge.inward());
+		for (int up = 1; up <= CastleLayout.Ledge.RISE + 1; up++) {
+			site.put(ledge.x(ledge.length()), slab + up, ledge.z(ledge.length()), ladder);
 		}
 	}
 
@@ -282,6 +242,66 @@ final class CastleDecor {
 				}
 				site.putShaped(0, y, t, CastleBlocks.BRICK_WALL);
 				site.putShaped(SIZE - 1, y, t, CastleBlocks.BRICK_WALL);
+			}
+		}
+	}
+
+	// -- Stairwork -------------------------------------------------------------------------------------------------------
+
+	/** Support pillars stand under the rails at these steps of a run. */
+	private static final int[] PILLAR_STEPS = {3, 7, 11};
+	/** The last step whose rail, two blocks over the step, still stands under the slab above. */
+	private static final int LAST_RAIL_STEP = CastleLayout.Flight.HOLE_FROM + 1;
+
+	/** Rails and support pillars on every run, and a rail round the opening where a run comes up through a floor. */
+	private static void stairwork(final CastleSite site) {
+		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
+			CastleLayout.FloorPlan plan = site.layout.floor(floor);
+			int slab = EndCastle.slabY(floor);
+			for (CastleLayout.Flight flight : plan.ups()) {
+				for (int k = 0; k <= LAST_RAIL_STEP; k++) {
+					for (int rail : new int[] {CastleLayout.Flight.RAIL_LOW, CastleLayout.Flight.RAIL_HIGH}) {
+						int x = flight.x(k, rail);
+						int z = flight.z(k, rail);
+						if (plan.kind(x, z) == CastleLayout.OPEN && !plan.walkedByAnother(flight, x, z)) {
+							site.putShaped(x, slab + 2 + k, z, CastleBlocks.BRICK_WALL);
+						}
+					}
+				}
+				for (int k : PILLAR_STEPS) {
+					for (int rail : new int[] {CastleLayout.Flight.RAIL_LOW, CastleLayout.Flight.RAIL_HIGH}) {
+						int x = flight.x(k, rail);
+						int z = flight.z(k, rail);
+						if (plan.kind(x, z) == CastleLayout.OPEN && !plan.walkedByAnother(flight, x, z)) {
+							site.fill(x, slab + 1, z, x, slab + 1 + k, z, CastleBlocks.PILLAR);
+						}
+					}
+				}
+			}
+			for (CastleLayout.Flight flight : plan.arrivals()) {
+				opening(site, plan, flight, slab);
+			}
+		}
+	}
+
+	/** Low walls along the sides of the hole a run climbs through, and across its foot end, on the floor the run arrives at. */
+	private static void opening(final CastleSite site, final CastleLayout.FloorPlan plan, final CastleLayout.Flight flight, final int slab) {
+		int y = slab + 1;
+		for (int k = CastleLayout.Flight.HOLE_FROM; k < CastleLayout.Flight.STEPS; k++) {
+			for (int rail : new int[] {CastleLayout.Flight.RAIL_LOW, CastleLayout.Flight.RAIL_HIGH}) {
+				int x = flight.x(k, rail);
+				int z = flight.z(k, rail);
+				if (plan.kind(x, z) == CastleLayout.OPEN && !plan.walkedByAnother(flight, x, z)) {
+					site.putShaped(x, y, z, CastleBlocks.BRICK_WALL);
+				}
+			}
+		}
+		int k = CastleLayout.Flight.HOLE_FROM - 1;
+		for (int lane = CastleLayout.Flight.RAIL_LOW; lane <= CastleLayout.Flight.RAIL_HIGH; lane++) {
+			int x = flight.x(k, lane);
+			int z = flight.z(k, lane);
+			if (plan.kind(x, z) == CastleLayout.OPEN && !plan.walkedByAnother(flight, x, z) && site.get(x, y, z).isAir()) {
+				site.putShaped(x, y, z, CastleBlocks.BRICK_WALL);
 			}
 		}
 	}

@@ -293,9 +293,36 @@ final class EndTestSupport {
 		return zombie;
 	}
 
-	/** A player standing on the deck of the rooftop, a given offset from its middle. */
+	/**
+	 * A player standing on the deck of the rooftop, a given offset from its middle. A ruined room or the hatch house may
+	 * stand on the asked cell, so the player takes the nearest open cell of the deck instead.
+	 */
 	static ServerPlayer joinOnRoof(final GameTestHelper helper, final ServerLevel end, final double dx, final double dz) {
-		return join(helper, end, new Vec3(0.5 + dx, EndCastle.ROOF_Y + 1, 0.5 + dz));
+		return join(helper, end, openDeck(EndCastles.layout(end), dx, dz));
+	}
+
+	/** The point of the deck nearest to an offset from its middle that no ruined room or hatch house covers, within a cell of margin. */
+	static Vec3 openDeck(final CastleLayout layout, final double dx, final double dz) {
+		Vec3 best = null;
+		double bestDistance = Double.MAX_VALUE;
+		for (int ox = -8; ox <= 8; ox++) {
+			for (int oz = -8; oz <= 8; oz++) {
+				double x = dx + ox;
+				double z = dz + oz;
+				int lx = (int) Math.floor(16.5 + x);
+				int lz = (int) Math.floor(16.5 + z);
+				boolean covered = layout.roof().ruins().stream().anyMatch(ruin -> ruin.bounds().x0() - 1 <= lx && lx <= ruin.bounds().x1() + 1
+					&& ruin.bounds().z0() - 1 <= lz && lz <= ruin.bounds().z1() + 1);
+				CastleLayout.Rect house = layout.roof().hatchHouse();
+				covered |= house.x0() - 1 <= lx && lx <= house.x1() + 1 && house.z0() - 1 <= lz && lz <= house.z1() + 1;
+				double distance = ox * ox + oz * oz;
+				if (!covered && distance < bestDistance) {
+					best = new Vec3(0.5 + x, EndCastle.ROOF_Y + 1, 0.5 + z);
+					bestDistance = distance;
+				}
+			}
+		}
+		return best;
 	}
 
 	/** An end crystal on the pillar of a spike, as the End's generator puts it. Its chunk is held loaded. */

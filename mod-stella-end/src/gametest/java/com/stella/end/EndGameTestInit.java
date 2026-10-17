@@ -23,7 +23,7 @@ public final class EndGameTestInit implements ModInitializer {
 	/** The tag of a fake player a test joined. */
 	static final String TEST_PLAYER_TAG = "mod-stella-end-test.player";
 	/** Where a castle mob loaded and how far the nearest player stood then. A test clears this before it reads it. */
-	record Spawn(BlockPos at, double nearestPlayer) {
+	record Spawn(BlockPos at, double nearestPlayer, boolean archer) {
 	}
 
 	static final List<Spawn> SPAWNS = new CopyOnWriteArrayList<>();
@@ -33,7 +33,8 @@ public final class EndGameTestInit implements ModInitializer {
 		BehaviorLog.set(TEST_SINK);
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (level.dimension().equals(Level.END) && entity instanceof Mob mob && EndMobs.floorOf(mob) > 0) {
-				SPAWNS.add(new Spawn(mob.blockPosition(), level.players().stream().mapToDouble(player -> player.distanceTo(mob)).min().orElse(Double.MAX_VALUE)));
+				SPAWNS.add(new Spawn(mob.blockPosition(), level.players().stream().mapToDouble(player -> player.distanceTo(mob)).min().orElse(Double.MAX_VALUE),
+					EndMobs.isArcher(mob)));
 			}
 		});
 		// A test player takes no damage, so a long wait never ends with a dead player, yet mobs still hunt them.

@@ -24,9 +24,9 @@ public class FactionGameTest {
 	static List<Cast> cast(final GameTestHelper helper, final ServerLevel end) {
 		int y = EndCastle.standY(EndCastle.FLOORS);
 		List<Cast> found = new ArrayList<>();
-		found.add(new Cast("wither skeleton", EndMobs.spawn(end, 6, EndMobs.Kind.WITHER_SKELETON, new BlockPos(-3, y, -3))));
-		found.add(new Cast("enderman", EndMobs.spawn(end, 6, EndMobs.Kind.ENDERMAN, new BlockPos(3, y, -3))));
-		found.add(new Cast("witch", EndMobs.spawnWitch(end, 5, new BlockPos(-3, y, 3))));
+		found.add(new Cast("wither skeleton", EndMobs.spawn(end, 6, EndMobs.Kind.WITHER_SKELETON, new BlockPos(-3, y, -3), false)));
+		found.add(new Cast("skeleton archer", EndMobs.spawn(end, 6, EndMobs.Kind.ARCHER, new BlockPos(3, y, -3))));
+		found.add(new Cast("shulker", EndMobs.spawn(end, 6, EndMobs.Kind.SHULKER, new BlockPos(-3, y, 3))));
 		found.add(new Cast("undead blaze", UndeadBlazes.spawn(end, new Vec3(3.5, y + 1.0, 3.5))));
 		Skeleton side = EntityTypes.SKELETON.create(end, EntitySpawnReason.EVENT);
 		Wyverns.own(side, new Vec3(0.5, y, -4.5), EndLevels.ROOFTOP);

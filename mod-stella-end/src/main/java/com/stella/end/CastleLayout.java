@@ -2,8 +2,11 @@ package com.stella.end;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
@@ -32,8 +35,11 @@ public final class CastleLayout {
 	/** The inside of the rest room above the hall. */
 	public static final Rect REST_ROOM = new Rect(8, 5, 26, 13);
 
-	/** The three flights of the ring floors, one per floor, each in a wing of the ring round the courtyard. */
-	public static final Flight FLIGHT_1 = new Flight(2, 27, Direction.NORTH);
+	/**
+	 * The three flights of the ring floors, one per floor, each in a wing of the ring round the courtyard. Flight 1 stands
+	 * in a closed shaft, so nothing of it shows from the gate or from the portal landing.
+	 */
+	public static final Flight FLIGHT_1 = new Flight(2, 27, Direction.NORTH, true);
 	public static final Flight FLIGHT_2 = new Flight(6, 2, Direction.EAST);
 	public static final Flight FLIGHT_3 = new Flight(26, 3, Direction.SOUTH);
 	/** The four flights from floor 4 to floor 5, one along each outer wall of the middle room. */
@@ -43,6 +49,8 @@ public final class CastleLayout {
 	);
 	/** The flight from floor 5 into the south-east corner of the arena. */
 	public static final Flight FLIGHT_5 = new Flight(9, 24, Direction.EAST);
+	/** The row of the floor 5 wall behind flight 5: the cells of the third lane touch it. */
+	private static final int FLIGHT_5_BACK = 27;
 	/** The stair behind the sealed door at the far end of the hall, up to the rest room. */
 	public static final Flight APSE = new Flight(9, 5, Direction.EAST);
 	/** The stair from the rest room to the hatch at the rooftop edge. */
@@ -56,11 +64,13 @@ public final class CastleLayout {
 	private final long seed;
 	private final List<FloorPlan> floors;
 	private final RestPlan rest;
+	private final RoofPlan roof;
 
-	CastleLayout(final long seed, final List<FloorPlan> floors, final RestPlan rest) {
+	CastleLayout(final long seed, final List<FloorPlan> floors, final RestPlan rest, final RoofPlan roof) {
 		this.seed = seed;
 		this.floors = floors;
 		this.rest = rest;
+		this.roof = roof;
 	}
 
 	public static CastleLayout generate(final long seed) {
@@ -71,7 +81,7 @@ public final class CastleLayout {
 		floors.add(middle(seed));
 		floors.add(upper(seed));
 		floors.add(hall(seed));
-		return new CastleLayout(seed, List.copyOf(floors), restPlan());
+		return new CastleLayout(seed, List.copyOf(floors), restPlan(), roofPlan(seed));
 	}
 
 	/** The block of the middle step of the flight into the arena, in the world of the real castle. Reaching it wakes the Sovereign. */
@@ -93,6 +103,58 @@ public final class CastleLayout {
 			List.of(new Candle(9, 12, 3), new Candle(16, 12, 2), new Candle(24, 12, 4), new Candle(8, 9, 2)));
 	}
 
+	// -- The rooftop ---------------------------------------------------------------------------------------------------------
+
+	/** The deck's middle cell on each axis. */
+	public static final int ROOF_CENTRE = SIZE / 2;
+	/** Cells within this many of the middle line on either axis are the dive lanes and the portal; ruins keep off them. */
+	public static final int LANE_HALF = 3;
+	/** The tallest ruin, in blocks over the deck. */
+	public static final int RUIN_HEIGHT = 6;
+	/** A ruin's far corners stay inside this squared distance from the middle, short of the parapet. */
+	private static final int RUIN_REACH = 330;
+	/** The squared distance from which the parapet stands. */
+	public static final int PARAPET_FROM = 420;
+
+	/** The house over the hatch: the cells of the rail columns, the run of the hole and the cell before it. */
+	public static Rect hatchHouse() {
+		Flight exit = restPlan().exit();
+		return new Rect(exit.x(0, Flight.RAIL_LOW), exit.z(Flight.HOLE_FROM - 1, 0), exit.x(0, Flight.RAIL_HIGH), exit.z(Flight.STEPS - 1, 0));
+	}
+
+	private static RoofPlan roofPlan(final long seed) {
+		Random random = random(seed, 7);
+		Rect house = hatchHouse();
+		Rect keepClear = new Rect(house.x0() - 2, house.z0() - 2, house.x1() + 2, house.z1() + 2);
+		List<int[]> quadrants = new ArrayList<>(List.of(new int[] {-1, -1}, new int[] {1, -1}, new int[] {-1, 1}, new int[] {1, 1}));
+		Collections.shuffle(quadrants, random);
+		int wanted = 3 + random.nextInt(2);
+		List<Ruin> ruins = new ArrayList<>();
+		for (int[] quadrant : quadrants) {
+			if (ruins.size() >= wanted) {
+				break;
+			}
+			for (int attempt = 0; attempt < 40; attempt++) {
+				int width = 5 + random.nextInt(3);
+				int depth = 5 + random.nextInt(3);
+				int a = LANE_HALF + 1 + random.nextInt(6);
+				int b = LANE_HALF + 1 + random.nextInt(6);
+				int xa = ROOF_CENTRE + quadrant[0] * a;
+				int xb = ROOF_CENTRE + quadrant[0] * (a + width - 1);
+				int za = ROOF_CENTRE + quadrant[1] * b;
+				int zb = ROOF_CENTRE + quadrant[1] * (b + depth - 1);
+				Rect bounds = new Rect(Math.min(xa, xb), Math.min(za, zb), Math.max(xa, xb), Math.max(za, zb));
+				int far = (xb - ROOF_CENTRE) * (xb - ROOF_CENTRE) + (zb - ROOF_CENTRE) * (zb - ROOF_CENTRE);
+				boolean overHatch = bounds.x1() >= keepClear.x0() && bounds.x0() <= keepClear.x1() && bounds.z1() >= keepClear.z0() && bounds.z0() <= keepClear.z1();
+				if (far <= RUIN_REACH && !overHatch) {
+					ruins.add(new Ruin(bounds, 4 + random.nextInt(RUIN_HEIGHT - 3)));
+					break;
+				}
+			}
+		}
+		return new RoofPlan(List.copyOf(ruins), house);
+	}
+
 	// -- Shapes --------------------------------------------------------------------------------------------------------
 
 	/** A rectangle of local cells, inclusive. */
@@ -106,12 +168,24 @@ public final class CastleLayout {
 	 * A straight flight of {@link #STEPS} steps, {@link #WIDTH} lanes wide. Step {@code k} lies {@code k} cells along
 	 * {@code direction} from the start and one block higher than step {@code k - 1}. Its last step is level with the
 	 * slab above, and the slab over the three steps before it is open, so a mob that jumps up the last steps clears it.
+	 * A rail column runs along each side of the run, one lane outside it. A shaft flight stands in a closed hall: walls
+	 * enclose its run and a vestibule of {@link #FOOT_ROWS} rows at its foot, and the only door is in the vestibule's
+	 * high side wall.
 	 */
-	public record Flight(int startX, int startZ, Direction direction) {
+	public record Flight(int startX, int startZ, Direction direction, boolean shaft) {
 		public static final int WIDTH = 3;
 		public static final int STEPS = 16;
 		/** The first step whose jump from the step below reaches into the slab above. */
 		public static final int HOLE_FROM = 12;
+		/** The lanes of the rail columns, on the low and the high side of the run. */
+		public static final int RAIL_LOW = -1;
+		public static final int RAIL_HIGH = WIDTH;
+		/** The rows of the vestibule in front of a shaft flight, from step -3 to step -1. */
+		public static final int FOOT_ROWS = 3;
+
+		public Flight(final int startX, final int startZ, final Direction direction) {
+			this(startX, startZ, direction, false);
+		}
 
 		/** The local x of step {@code k} in lane {@code lane}; {@code k} may be -1 for the foot or 16 for the landing. */
 		public int x(final int k, final int lane) {
@@ -150,6 +224,41 @@ public final class CastleLayout {
 		public boolean contains(final int x, final int z) {
 			return stepAt(x, z) >= 0;
 		}
+
+		/** The cells of the walls that close a shaft flight: both sides, the cap at the foot and the cap over the top. Each is {x, z}. */
+		public List<int[]> shaftWalls() {
+			List<int[]> cells = new ArrayList<>();
+			for (int k = -FOOT_ROWS - 1; k <= STEPS; k++) {
+				cells.add(new int[] {x(k, RAIL_LOW - 1), z(k, RAIL_LOW - 1)});
+				cells.add(new int[] {x(k, RAIL_HIGH + 1), z(k, RAIL_HIGH + 1)});
+			}
+			for (int lane = RAIL_LOW; lane <= RAIL_HIGH; lane++) {
+				cells.add(new int[] {x(-FOOT_ROWS - 1, lane), z(-FOOT_ROWS - 1, lane)});
+				cells.add(new int[] {x(STEPS, lane), z(STEPS, lane)});
+			}
+			return cells;
+		}
+
+		/** The open cells inside a shaft: the run, both rail columns and the vestibule. Each is {x, z}. */
+		public List<int[]> shaftInterior() {
+			List<int[]> cells = new ArrayList<>();
+			for (int k = -FOOT_ROWS; k < STEPS; k++) {
+				for (int lane = RAIL_LOW; lane <= RAIL_HIGH; lane++) {
+					cells.add(new int[] {x(k, lane), z(k, lane)});
+				}
+			}
+			return cells;
+		}
+
+		/** The doorway of a shaft: three cells in the high side wall, beside the vestibule. */
+		public Door footDoor() {
+			int lane = RAIL_HIGH + 1;
+			int ax = x(-FOOT_ROWS, lane);
+			int az = z(-FOOT_ROWS, lane);
+			int bx = x(-1, lane);
+			int bz = z(-1, lane);
+			return new Door(Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz), false);
+		}
 	}
 
 	/** A double chest: this is the left half, facing into its room. The right half lies one cell clockwise from it. */
@@ -172,6 +281,54 @@ public final class CastleLayout {
 
 	/** A candle stand on the floor; the count is how many candles share the cell. */
 	public record Candle(int x, int z, int count) {
+	}
+
+	/**
+	 * A plank ledge along a wall, six blocks over the floor. {@code edge} is the wall-row cell where it starts and
+	 * {@code toWall} the direction of the wall behind it. The ledge runs {@code length} cells along that wall, two
+	 * cells deep, with bars on its open row; the wall row is the one a mob stands on. A ladder stands in the next cell.
+	 */
+	public record Ledge(int edgeX, int edgeZ, Direction toWall, int length) {
+		public static final int LONGEST = 6;
+		public static final int SHORTEST = 3;
+		/** A floor gets ledges until it holds this many. */
+		public static final int WANTED = 2;
+		/** The planks lie this many blocks over the floor slab; a mob on them stands one block higher. */
+		public static final int RISE = 6;
+
+		public Direction along() {
+			return toWall.getClockWise();
+		}
+
+		public Direction inward() {
+			return toWall.getOpposite();
+		}
+
+		/** The wall-row cell {@code i} along the ledge; {@code i} equal to {@link #length} is the ladder cell. */
+		public int x(final int i) {
+			return edgeX + along().getStepX() * i;
+		}
+
+		public int z(final int i) {
+			return edgeZ + along().getStepZ() * i;
+		}
+
+		/** The cell on the open row, beside wall-row cell {@code i}. */
+		public int openX(final int i) {
+			return x(i) + inward().getStepX();
+		}
+
+		public int openZ(final int i) {
+			return z(i) + inward().getStepZ();
+		}
+	}
+
+	/** A ruined room on the rooftop: its footprint in local cells and its height over the deck, in blocks. */
+	public record Ruin(Rect bounds, int height) {
+	}
+
+	/** The rooftop above the deck: the ruined rooms, and the house that roofs the hatch. */
+	public record RoofPlan(List<Ruin> ruins, Rect hatchHouse) {
 	}
 
 	/** The rest room above the hall, its props, and the stair from it to the hatch in the rooftop. */
@@ -262,6 +419,19 @@ public final class CastleLayout {
 		throw new IllegalStateException("no doorway fits the wall " + wall);
 	}
 
+	/** Closes a shaft flight in walls, opens its inside and cuts its doorway. */
+	private static void raiseShaft(final Grid grid, final Flight flight, final List<Door> doors) {
+		for (int[] cell : flight.shaftWalls()) {
+			grid.set(cell[0], cell[1], WALL);
+		}
+		for (int[] cell : flight.shaftInterior()) {
+			grid.set(cell[0], cell[1], OPEN);
+		}
+		Door door = flight.footDoor();
+		grid.box(door.x0(), door.z0(), door.x1(), door.z1(), DOOR);
+		doors.add(door);
+	}
+
 	private static boolean[] mask() {
 		return new boolean[SIZE * SIZE];
 	}
@@ -272,18 +442,18 @@ public final class CastleLayout {
 		}
 	}
 
-	/** Cells a door must not open onto: the low steps of a flight stand in the way of a walker, and the high ones open into the floor above. */
+	/** Cells a door must not open onto: the low steps of a flight and its rails stand in the way of a walker, and the high ones open into the floor above. */
 	private static void obstruct(final boolean[] mask, final List<Flight> ups, final List<Flight> arrivals) {
 		for (Flight flight : ups) {
-			for (int k = 0; k <= 1; k++) {
-				for (int lane = 0; lane < Flight.WIDTH; lane++) {
+			for (int k = -1; k <= 1; k++) {
+				for (int lane = Flight.RAIL_LOW; lane <= Flight.RAIL_HIGH; lane++) {
 					mark(mask, flight.x(k, lane), flight.z(k, lane));
 				}
 			}
 		}
 		for (Flight flight : arrivals) {
-			for (int k = Flight.HOLE_FROM; k < Flight.STEPS; k++) {
-				for (int lane = 0; lane < Flight.WIDTH; lane++) {
+			for (int k = Flight.HOLE_FROM - 1; k <= Flight.STEPS; k++) {
+				for (int lane = Flight.RAIL_LOW; lane <= Flight.RAIL_HIGH; lane++) {
 					mark(mask, flight.x(k, lane), flight.z(k, lane));
 				}
 			}
@@ -315,8 +485,21 @@ public final class CastleLayout {
 		};
 	}
 
+	/** How many times floor 1 is drawn again when its flight shows from an entrance. */
+	private static final int ENTRANCE_TRIES = 400;
+
 	private static FloorPlan ring(final long seed, final int floor) {
-		Random random = random(seed, floor);
+		for (int attempt = 0; ; attempt++) {
+			FloorPlan plan = ringOnce(seed, floor, attempt);
+			// A seed that no draw satisfies keeps its last plan: a flight in sight beats a castle that cannot be built.
+			if (floor != 1 || attempt >= ENTRANCE_TRIES || hiddenFromEntrances(plan)) {
+				return plan;
+			}
+		}
+	}
+
+	private static FloorPlan ringOnce(final long seed, final int floor, final int attempt) {
+		Random random = random(seed, floor + 16 * attempt);
 		Grid grid = Grid.bordered();
 		Rect box = new Rect(COURTYARD.x0() - 1, COURTYARD.z0() - 1, COURTYARD.x1() + 1, COURTYARD.z1() + 1);
 		grid.outline(box, WALL);
@@ -346,6 +529,11 @@ public final class CastleLayout {
 		obstruct(avoid, ups, arrivals);
 		keepOff(avoid, vault);
 		List<Door> doors = new ArrayList<>();
+		for (Flight flight : ups) {
+			if (flight.shaft()) {
+				raiseShaft(grid, flight, doors);
+			}
+		}
 		for (int i = 0; i < RING_DIVIDERS.size(); i++) {
 			if (!merged.contains(i)) {
 				doors.add(cutDoor(grid, RING_DIVIDERS.get(i), avoid, random));
@@ -365,9 +553,79 @@ public final class CastleLayout {
 				mark(skip, x, z);
 			}
 		}
-		int landX = floor == 1 ? 3 : landingX(arrivals.get(0));
-		int landZ = floor == 1 ? 3 : landingZ(arrivals.get(0));
+		int landX = floor == 1 ? PORTAL_LANDING_X : landingX(arrivals.get(0));
+		int landZ = floor == 1 ? PORTAL_LANDING_Z : landingZ(arrivals.get(0));
 		return finish(floor, grid, skip, doors, ups, arrivals, mask(), vault, landX, landZ, random);
+	}
+
+	// -- What a player sees on coming in ---------------------------------------------------------------------------------
+
+	/** Where a player from the End portal lands on floor 1: the north-west corner room. */
+	public static final int PORTAL_LANDING_X = 3;
+	public static final int PORTAL_LANDING_Z = 3;
+	/** How far apart the sight lines to one step cell are, in cells; the extra lines run through its corners. */
+	private static final double SIGHT_SPREAD = 0.35;
+	private static final double SIGHT_STEP = 0.05;
+
+	/** The points a player stands at on coming in: the three cells of the gate, and the portal landing. Each is {x, z} in cells. */
+	public static List<double[]> entrances() {
+		List<double[]> points = new ArrayList<>();
+		for (int x = GATE.x0(); x <= GATE.x1(); x++) {
+			points.add(new double[] {x + 0.5, GATE.z0() + 0.5});
+		}
+		points.add(new double[] {PORTAL_LANDING_X + 0.5, PORTAL_LANDING_Z + 0.5});
+		return points;
+	}
+
+	private static boolean hiddenFromEntrances(final FloorPlan plan) {
+		for (double[] from : entrances()) {
+			for (Flight flight : plan.ups()) {
+				if (shows(plan, flight, from[0], from[1])) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Whether any cell of the run of a flight can be seen from a point of the floor: a straight line from the point
+	 * to the cell, or to a point near its corners, crosses no wall. A doorway is open at every height here, so a line
+	 * that clears one counts as seen. That is stricter than the view of a player under a doorway lintel.
+	 */
+	public static boolean shows(final FloorPlan plan, final Flight flight, final double fromX, final double fromZ) {
+		for (int k = 0; k < Flight.STEPS; k++) {
+			for (int lane = 0; lane < Flight.WIDTH; lane++) {
+				double cx = flight.x(k, lane) + 0.5;
+				double cz = flight.z(k, lane) + 0.5;
+				for (double[] offset : new double[][] {{0, 0}, {SIGHT_SPREAD, SIGHT_SPREAD}, {-SIGHT_SPREAD, SIGHT_SPREAD}, {SIGHT_SPREAD, -SIGHT_SPREAD},
+					{-SIGHT_SPREAD, -SIGHT_SPREAD}}) {
+					if (clearLine(plan, fromX, fromZ, cx + offset[0], cz + offset[1])) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	private static boolean clearLine(final FloorPlan plan, final double fromX, final double fromZ, final double toX, final double toZ) {
+		double dx = toX - fromX;
+		double dz = toZ - fromZ;
+		int steps = (int) Math.ceil(Math.hypot(dx, dz) / SIGHT_STEP);
+		int startX = (int) Math.floor(fromX);
+		int startZ = (int) Math.floor(fromZ);
+		int endX = (int) Math.floor(toX);
+		int endZ = (int) Math.floor(toZ);
+		for (int i = 1; i < steps; i++) {
+			int x = (int) Math.floor(fromX + dx * i / steps);
+			int z = (int) Math.floor(fromZ + dz * i / steps);
+			boolean end = (x == startX && z == startZ) || (x == endX && z == endZ);
+			if (!end && plan.kind(x, z) == WALL) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// -- Floor 4: a middle room over the courtyard and four flights round it ---------------------------------------------
@@ -380,11 +638,8 @@ public final class CastleLayout {
 		List<Divider> dividers = List.of(
 			new Divider(true, 20, 1, 10), new Divider(false, 20, 21, 30), new Divider(true, 11, 21, 30), new Divider(false, 11, 1, 10)
 		);
-		int skipped = random.nextInt(5) == 0 ? random.nextInt(dividers.size()) : -1;
-		for (int i = 0; i < dividers.size(); i++) {
-			if (i != skipped) {
-				dividers.get(i).place(grid);
-			}
+		for (Divider divider : dividers) {
+			divider.place(grid);
 		}
 		List<Flight> ups = FLIGHTS_4;
 		List<Flight> arrivals = List.of(FLIGHT_3);
@@ -393,10 +648,8 @@ public final class CastleLayout {
 		obstruct(avoid, ups, arrivals);
 		keepOff(avoid, vault);
 		List<Door> doors = new ArrayList<>();
-		for (int i = 0; i < dividers.size(); i++) {
-			if (i != skipped) {
-				doors.add(cutDoor(grid, dividers.get(i), avoid, random));
-			}
+		for (Divider divider : dividers) {
+			doors.add(cutDoor(grid, divider, avoid, random));
 		}
 		for (Rect door : List.of(new Rect(17, 11, 19, 11), new Rect(20, 17, 20, 19), new Rect(12, 20, 14, 20), new Rect(11, 12, 11, 14))) {
 			grid.box(door.x0(), door.z0(), door.x1(), door.z1(), DOOR);
@@ -425,6 +678,9 @@ public final class CastleLayout {
 		for (Divider divider : dividers) {
 			divider.place(grid);
 		}
+		// The wall under the hall's south wall backs the stair into the arena along its whole length. One cell at its west end is the way round.
+		new Divider(false, FLIGHT_5_BACK, 7, 24).place(grid);
+		grid.set(7, FLIGHT_5_BACK, DOOR);
 		List<Flight> ups = List.of(FLIGHT_5);
 		List<Flight> arrivals = FLIGHTS_4;
 		Chest vault = vaultChest(floor);
@@ -435,6 +691,7 @@ public final class CastleLayout {
 		for (Divider divider : dividers) {
 			doors.add(cutDoor(grid, divider, avoid, random));
 		}
+		doors.add(new Door(7, FLIGHT_5_BACK, 7, FLIGHT_5_BACK, false));
 		for (int wall : new int[] {6, 25}) {
 			for (int[] band : new int[][] {{1, 10}, {12, 19}, {21, 30}}) {
 				doors.add(cutDoor(grid, new Divider(true, wall, band[0], band[1]), avoid, random));
@@ -499,7 +756,7 @@ public final class CastleLayout {
 		return switch (floor) {
 			case 1 -> new Chest(30, 5, Direction.WEST, true);
 			case 2 -> new Chest(1, 26, Direction.EAST, true);
-			case 3 -> new Chest(30, 6, Direction.WEST, true);
+			case 3 -> new Chest(30, 27, Direction.WEST, true);
 			case 4 -> new Chest(1, 22, Direction.EAST, true);
 			case 5 -> new Chest(24, 3, Direction.WEST, true);
 			default -> new Chest(5, 20, Direction.EAST, true);
@@ -556,7 +813,7 @@ public final class CastleLayout {
 		boolean[] stairs = mask();
 		for (Flight flight : ups) {
 			for (int k = 0; k < Flight.STEPS; k++) {
-				for (int lane = 0; lane < Flight.WIDTH; lane++) {
+				for (int lane = Flight.RAIL_LOW; lane <= Flight.RAIL_HIGH; lane++) {
 					mark(stairs, flight.x(k, lane), flight.z(k, lane));
 				}
 			}
@@ -565,8 +822,8 @@ public final class CastleLayout {
 			}
 		}
 		for (Flight flight : arrivals) {
-			for (int k = Flight.HOLE_FROM; k <= Flight.STEPS; k++) {
-				for (int lane = 0; lane < Flight.WIDTH; lane++) {
+			for (int k = Flight.HOLE_FROM - 1; k <= Flight.STEPS; k++) {
+				for (int lane = Flight.RAIL_LOW; lane <= Flight.RAIL_HIGH; lane++) {
 					mark(stairs, flight.x(k, lane), flight.z(k, lane));
 				}
 			}
@@ -709,8 +966,78 @@ public final class CastleLayout {
 				}
 			}
 		}
-		return new FloorPlan(floor, grid.cells, rooms, roomCount, List.copyOf(doors), List.copyOf(ups), List.copyOf(arrivals), List.copyOf(chests), landX,
+		FloorPlan plan = new FloorPlan(floor, grid.cells, rooms, roomCount, List.copyOf(doors), List.copyOf(ups), List.copyOf(arrivals), List.copyOf(chests), landX,
 			landZ, List.copyOf(spawnCells), List.copyOf(props), List.copyOf(candles), List.copyOf(edges), stairs);
+		if (floor <= 5) {
+			plan.ledges = List.copyOf(findLedges(plan, new Random(random.nextLong())));
+		}
+		return plan;
+	}
+
+	/**
+	 * The ledges of a floor. A first pass gives each room the longest ledge that fits. While the floor holds fewer than
+	 * {@link Ledge#WANTED}, further passes try shorter ledges in the rooms that have none, then in every room.
+	 */
+	private static List<Ledge> findLedges(final FloorPlan plan, final Random random) {
+		List<Ledge> found = new ArrayList<>();
+		Set<Long> taken = new HashSet<>();
+		for (int length = Ledge.LONGEST; length >= Ledge.SHORTEST; length--) {
+			for (int room = 1; room <= plan.roomCount(); room++) {
+				int id = room;
+				boolean has = found.stream().anyMatch(ledge -> plan.room(ledge.edgeX(), ledge.edgeZ()) == id);
+				if ((length == Ledge.LONGEST || found.size() < Ledge.WANTED) && !has) {
+					addLedge(plan, room, length, random, taken, found);
+				}
+			}
+		}
+		for (int room = 1; room <= plan.roomCount() && found.size() < Ledge.WANTED; room++) {
+			addLedge(plan, room, Ledge.SHORTEST, random, taken, found);
+		}
+		return found;
+	}
+
+	private static boolean inGrid(final int x, final int z) {
+		return x >= 0 && z >= 0 && x < SIZE && z < SIZE;
+	}
+
+	private static boolean walled(final FloorPlan plan, final int x, final int z) {
+		return inGrid(x, z) && plan.kind(x, z) == WALL;
+	}
+
+	private static void addLedge(final FloorPlan plan, final int room, final int length, final Random random, final Set<Long> taken, final List<Ledge> found) {
+		List<Ledge> starts = new ArrayList<>();
+		for (int x = 0; x < SIZE; x++) {
+			for (int z = 0; z < SIZE; z++) {
+				if (plan.room(x, z) != room) {
+					continue;
+				}
+				for (Direction toWall : Direction.Plane.HORIZONTAL) {
+					if (walled(plan, x + toWall.getStepX(), z + toWall.getStepZ())) {
+						starts.add(new Ledge(x, z, toWall, length));
+					}
+				}
+			}
+		}
+		Collections.shuffle(starts, random);
+		for (Ledge ledge : starts) {
+			boolean fits = true;
+			for (int i = 0; i <= length && fits; i++) {
+				int x = ledge.x(i);
+				int z = ledge.z(i);
+				int ox = ledge.openX(i);
+				int oz = ledge.openZ(i);
+				fits = walled(plan, x + ledge.toWall().getStepX(), z + ledge.toWall().getStepZ()) && inGrid(ox, oz) && plan.calm(x, z) && plan.calm(ox, oz)
+					&& plan.room(ox, oz) == room && !taken.contains((long) x * SIZE + z) && !taken.contains((long) ox * SIZE + oz);
+			}
+			if (fits) {
+				for (int i = 0; i <= length; i++) {
+					taken.add((long) ledge.x(i) * SIZE + ledge.z(i));
+					taken.add((long) ledge.openX(i) * SIZE + ledge.openZ(i));
+				}
+				found.add(ledge);
+				return;
+			}
+		}
 	}
 
 	/** Whether no wall, door or void touches the cell, even by a corner: a spawn or a prop stands clear of every wall. */
@@ -763,6 +1090,10 @@ public final class CastleLayout {
 		return rest;
 	}
 
+	public RoofPlan roof() {
+		return roof;
+	}
+
 	/** One floor: its walls, rooms, doors, stairs, chests and the cells mobs may spawn on, all in local cells. */
 	public static final class FloorPlan {
 		private final int number;
@@ -780,6 +1111,7 @@ public final class CastleLayout {
 		private final List<Candle> candles;
 		private final List<int[]> edges;
 		private final boolean[] stairs;
+		private List<Ledge> ledges = List.of();
 
 		FloorPlan(
 			final int number, final byte[] cells, final byte[] rooms, final int roomCount, final List<Door> doors, final List<Flight> ups,
@@ -871,9 +1203,56 @@ public final class CastleLayout {
 			return edges;
 		}
 
-		/** Whether a flight's run, a stair hole or a top step takes the cell at this floor. */
+		/** Whether a flight's run, its rails, a stair hole or a top step takes the cell at this floor. */
 		public boolean stairAt(final int x, final int z) {
 			return stairs[x * EndCastle.SIZE + z];
+		}
+
+		/**
+		 * Whether a cell is walked by a run other than {@code own} on this floor: a lane of a run that starts here, or the top
+		 * stretch and landing of one that arrives here. A rail or a pillar there would shut that walkway.
+		 */
+		public boolean walkedByAnother(final Flight own, final int x, final int z) {
+			for (Flight other : ups) {
+				if (!other.equals(own) && other.stepAt(x, z) >= 0) {
+					return true;
+				}
+			}
+			for (Flight other : arrivals) {
+				if (other.equals(own)) {
+					continue;
+				}
+				boolean landing = false;
+				for (int lane = 0; lane < Flight.WIDTH; lane++) {
+					landing |= other.x(Flight.STEPS, lane) == x && other.z(Flight.STEPS, lane) == z;
+				}
+				if (other.stepAt(x, z) >= Flight.HOLE_FROM - 1 || landing) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/** The ledges of the floor, at most one to a room. Archers spawn on them. */
+		public List<Ledge> ledges() {
+			return ledges;
+		}
+
+		/** Cells a roof or a ledge may use: open floor in a room, with no stair or doorway close by. */
+		public boolean calm(final int x, final int z) {
+			if (x < 1 || z < 1 || x > SIZE - 2 || z > SIZE - 2 || kind(x, z) != OPEN || room(x, z) == 0) {
+				return false;
+			}
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dz = -1; dz <= 1; dz++) {
+					int nx = x + dx;
+					int nz = z + dz;
+					if (stairAt(nx, nz) || kind(nx, nz) == DOOR || kind(nx, nz) == VOID) {
+						return false;
+					}
+				}
+			}
+			return true;
 		}
 	}
 }

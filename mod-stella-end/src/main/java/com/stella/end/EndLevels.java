@@ -4,7 +4,10 @@ package com.stella.end;
 public final class EndLevels {
 	public static final int FLOOR_BASE = 100;
 	public static final int FLOOR_STEP = 3;
-	public static final int ELITE_WITCH_BONUS = 5;
+	/** The skeleton archers of the floors hold one level on every floor. */
+	public static final int ARCHER = 110;
+	/** The skeleton horse a castle wither skeleton rides. */
+	public static final int MOUNT = 95;
 	public static final int SOVEREIGN = 120;
 	public static final int UNDEAD_BLAZE = 115;
 	public static final int DRAGON = 150;
@@ -17,9 +20,5 @@ public final class EndLevels {
 	/** The level of a mob on a floor, 1 to 6. */
 	public static int floorLevel(final int floor) {
 		return FLOOR_BASE + FLOOR_STEP * (floor - 1);
-	}
-
-	public static int eliteWitchLevel(final int floor) {
-		return floorLevel(floor) + ELITE_WITCH_BONUS;
 	}
 }
