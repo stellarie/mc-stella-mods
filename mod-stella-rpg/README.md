@@ -663,6 +663,11 @@ Deep mining feeds crafted gear. The path has four steps, and each has its own se
 Materials and gear from chests and containers carry nothing. Equipment that a mob drops, a trade, fishing, or a vault gives keeps the random gear roll.
 Pickaxes, shovels, and hoes carry nothing, and the bonus of a material used in them is lost.
 
+## Ore experience by depth
+
+The experience orbs of an ore that a player breaks scale with its height. The factor is `1 + max(0, 64 - y) / 64`. It is 1 at y 64 and above, 2 at y 0, and 3 at y -64. A fraction rounds up with its own chance, so the average stays exact.
+Every ore of the `minecraft:ores` tag that drops experience scales. A break with no player, such as a piston or an explosion, never scales. Silk Touch drops no experience.
+
 ## Stacking and smelting
 
 Two stacks merge only when their item and bonus maps are equal. 99% of the mined drops are plain, so they stack with each other and with plain ore from any source.
@@ -678,6 +683,7 @@ A rolled drop is rare and free (its stats are not drawn from a fixed list), so t
 ## Mined material profiles
 
 `material_rolls.roll_chance` (default 0.01) is the share of mined tier drops that carry a bonus. The rest are plain and stack. Depth never changes this share.
+Each effective LUK point of the miner adds 0.5 percentage points to it, so LUK 40 rolls 21% of the drops. The share never passes 100%.
 A rolled drop draws its bonuses freely. The count follows the tier weights, each stat falls in the tier range, and no fixed list limits the sets.
 
 | Tier | Mined drop | Stat range | Count weights 1, 2, 3, 4 | Enchant chance in a rolled drop |

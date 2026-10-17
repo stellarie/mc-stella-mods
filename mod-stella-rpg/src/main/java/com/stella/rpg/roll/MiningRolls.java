@@ -2,6 +2,8 @@ package com.stella.rpg.roll;
 
 import com.stella.rpg.RpgConfig;
 import com.stella.rpg.RpgConfigStore;
+import com.stella.rpg.Stat;
+import com.stella.rpg.StatBonuses;
 import com.stella.rpg.StellaRpg;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,8 @@ public final class MiningRolls {
 	public static final TagKey<Block> ORES = TagKey.create(Registries.BLOCK, StellaRpg.id("bonus_ores"));
 	/** Sea level. A deeper break counts as deeper. */
 	private static final double SURFACE_Y = 64.0;
+	/** Each effective LUK point adds this much to the chance that a mined drop rolls. */
+	public static final double LUK_ROLL_BONUS = 0.005;
 
 	private MiningRolls() {
 	}
@@ -55,6 +59,11 @@ public final class MiningRolls {
 			|| table.unwrapKey().map(key -> key.identifier().getPath().startsWith("chests/")).orElse(false);
 	}
 
+	/** The share of mined drops that roll, for a base chance and a player's effective LUK. */
+	public static double rollChance(final double base, final int luk) {
+		return Math.min(1.0, base + LUK_ROLL_BONUS * luk);
+	}
+
 	private static void markChest(final Holder<LootTable> table, final List<ItemStack> drops) {
 		if (!isChestTable(table)) {
 			return;
@@ -69,7 +78,7 @@ public final class MiningRolls {
 			return;
 		}
 		BlockState state = context.getOptional(LootContextParams.BLOCK_STATE);
-		if (state == null || !state.is(ORES) || !(context.getOptional(LootContextParams.THIS_ENTITY) instanceof ServerPlayer)) {
+		if (state == null || !state.is(ORES) || !(context.getOptional(LootContextParams.THIS_ENTITY) instanceof ServerPlayer miner)) {
 			return;
 		}
 		Vec3 origin = context.getOptional(LootContextParams.ORIGIN);
@@ -77,13 +86,14 @@ public final class MiningRolls {
 		double depth = origin == null ? 0.0 : depth(origin.y, level.getMinY());
 		RpgConfig.MaterialRolls config = RpgConfigStore.current().materialRolls();
 		RandomSource random = context.getRandom();
+		double rollChance = rollChance(config.rollChance(), StatBonuses.effective(miner, Stat.LUK));
 		for (ItemStack stack : drops) {
 			String tier = MaterialProfiles.tierOf(stack);
 			if (tier == null || stack.has(WeaponRolls.STAT_ROLLS) || stack.has(WeaponRolls.AFFIX_ROLLS)) {
 				continue;
 			}
-			// Most drops stay plain so they stack. Depth lifts the quality of a rolled drop, never the chance.
-			if (random.nextDouble() >= config.rollChance()) {
+			// Most drops stay plain so they stack. LUK lifts the chance of a roll. Depth lifts the quality of a rolled drop.
+			if (random.nextDouble() >= rollChance) {
 				continue;
 			}
 			MaterialProfiles.Profile profile = MaterialProfiles.roll(tier, config, MaterialProfiles.gearAffixes(tier), depth, random);
