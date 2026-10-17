@@ -95,6 +95,7 @@ public final class Spellbooks implements ModInitializer {
 		StaffBolt.register();
 		SpellTimers.register();
 		BookRefine.register();
+		ManaCrystal.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 

@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:note_block",
+		"mod-stella-spells:mana_crystal"
+	],
+	"result": {
+		"id": "mod-stella-spells:war_cry_scroll",
+		"count": 4
+	}
+}

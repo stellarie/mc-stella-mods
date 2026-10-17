@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:golden_sword",
+		"mod-stella-spells:mana_crystal"
+	],
+	"result": {
+		"id": "mod-stella-spells:holy_arms_scroll",
+		"count": 4
+	}
+}

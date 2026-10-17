@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:shield",
+		"mod-stella-spells:mana_crystal"
+	],
+	"result": {
+		"id": "mod-stella-spells:shield_bash_scroll",
+		"count": 4
+	}
+}
