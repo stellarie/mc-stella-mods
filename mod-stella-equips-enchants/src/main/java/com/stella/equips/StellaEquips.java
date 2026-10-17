@@ -58,6 +58,7 @@ public class StellaEquips implements ModInitializer {
 		Soulbound.register();
 		com.stella.equips.refine.RefineBlocks.register();
 		com.stella.equips.refine.RefineStation.register();
+		com.stella.equips.refine.RefineCatalyst.register();
 		com.stella.equips.refine.RefineEffects.register();
 		com.stella.equips.shield.ShieldDurability.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());

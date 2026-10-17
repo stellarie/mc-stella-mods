@@ -245,6 +245,11 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 - A success raises the level by one. Below +10 a failure keeps the level. From +10 up a failure lowers it by
   one, but never below +10 or +12 once the piece has reached them. A failure never costs durability and never
   breaks the piece. Expected cost from +0 to +15 is about 1,700 to 1,800 of the material.
+- **Refine Catalyst.** Breaking a deepslate diamond ore, a deepslate emerald ore or ancient debris with the right
+  tool, without Silk Touch, drops one with a 5% chance. Hold one in your inventory and refine a piece at +7 or
+  higher. A failed roll then spends one catalyst and keeps the level. A successful roll, a whetstone included,
+  spends none. Below +10 a failure keeps the level anyway, so the catalyst changes the result only at +11, +13
+  and +14.
 - Refining never wears an anvil. The Refining Anvil never wears, even when it repairs.
 - Village smiths no longer refine.
 - The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are

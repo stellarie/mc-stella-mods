@@ -18,7 +18,8 @@ import net.minecraft.world.item.ItemStack;
 /**
  * Refining happens in the Refine tab of an anvil. The client sends the open anvil's container id; the server
  * refines the piece in the first input slot. A success raises the level by one. A failure lowers it by one and
- * never costs durability or breaks the piece. The refine never runs the anvil's own take step, so the anvil
+ * never costs durability or breaks the piece. A failure from +7 up spends a {@link RefineCatalyst} when the player
+ * holds one, and the level then stays. The refine never runs the anvil's own take step, so the anvil
  * never wears.
  */
 public final class RefineStation {
@@ -107,11 +108,14 @@ public final class RefineStation {
 			player.sendSystemMessage(Component.literal("Success! ").withStyle(ChatFormatting.GREEN).append(piece.getHoverName())
 				.append(" is now +" + next), true);
 		} else {
-			int dropped = Refine.levelAfterFailure(level);
+			// The catalyst is spent only on a failed roll, so a whetstone success never reaches it.
+			boolean spared = level >= RefineCatalyst.MIN_LEVEL && RefineCatalyst.take(player.getInventory());
+			int dropped = spared ? level : Refine.levelAfterFailure(level);
 			Refine.setLevel(piece, dropped);
 			player.level().playSound(null, player.blockPosition(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.6F, 0.8F);
 			player.sendSystemMessage(Component.literal("The refine failed: ").withStyle(ChatFormatting.RED).append(piece.getHoverName())
-				.append(dropped == level ? " kept +" + dropped : " dropped to +" + dropped), true);
+				.append(dropped == level ? " kept +" + dropped : " dropped to +" + dropped)
+				.append(spared ? " (catalyst spent)" : ""), true);
 		}
 		slot.setChanged();
 		menu.broadcastChanges();
