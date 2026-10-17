@@ -32,7 +32,16 @@ public class FactionGameTest {
 		Wyverns.own(side, new Vec3(0.5, y, -4.5), EndLevels.ROOFTOP);
 		end.addFreshEntity(side);
 		found.add(new Cast("dragon side skeleton", side));
-		found.add(new Cast("sovereign", UndeadSovereign.spawn(end)));
+		found.add(new Cast("sovereign", UndeadSovereign.spawn(end, false)));
+		List<net.minecraft.world.entity.monster.skeleton.WitherSkeleton> knights = WitherKnights.raise(end);
+		// The equips mod's Deflection turns a share of blows away, a hurt-by check included, and a knight wears six random enchantments a piece.
+		// This test is about sides, so the knight stands in plain gear.
+		for (net.minecraft.world.entity.monster.skeleton.WitherSkeleton knight : knights) {
+			for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+				knight.getItemBySlot(slot).remove(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+			}
+		}
+		found.add(new Cast("wither knight", knights.isEmpty() ? null : knights.get(0)));
 		for (Cast one : found) {
 			helper.assertTrue(one.mob() != null && one.mob().isAlive(), one.name() + " was not made");
 		}

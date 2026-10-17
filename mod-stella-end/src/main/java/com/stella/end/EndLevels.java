@@ -9,6 +9,8 @@ public final class EndLevels {
 	/** The skeleton horse a castle wither skeleton rides. */
 	public static final int MOUNT = 95;
 	public static final int SOVEREIGN = 120;
+	/** The two Wither Knights that rise with the Sovereign hold its level. */
+	public static final int KNIGHT = 120;
 	public static final int UNDEAD_BLAZE = 115;
 	public static final int DRAGON = 150;
 	public static final int WYVERN = 130;

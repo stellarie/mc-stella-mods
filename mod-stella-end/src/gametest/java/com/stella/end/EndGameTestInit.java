@@ -44,6 +44,15 @@ public final class EndGameTestInit implements ModInitializer {
 				StellaEnd.LOGGER.info("[END] test player died source={} attacker={} at={}", source.getMsgId(), source.getEntity(), player.blockPosition());
 			}
 		});
+		// In a world the run has just made, the first test would build the castle inside its own body and spawn its stand-ins
+		// in the same tick. The build happens here, before any test starts.
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			ServerLevel end = server.getLevel(Level.END);
+			if (end != null) {
+				EndCastles.ensureBuilt(end);
+				EndTestSupport.hold(end, EndCastle.min());
+			}
+		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			ServerLevel end = server.getLevel(Level.END);
 			if (end == null) {

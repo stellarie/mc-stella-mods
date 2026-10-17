@@ -13,5 +13,11 @@
 	"item.mod-stella-end.draconic_leggings": "Draconic Leggings",
 	"item.mod-stella-end.draconic_boots": "Draconic Boots",
 	"block.mod-stella-end.soul_flame": "Soul Flame",
-	"entity.mod-stella-end.undead_sovereign": "Undead Blaze Sovereign"
+	"entity.mod-stella-end.undead_sovereign": "Undead Blaze Sovereign",
+	"item.mod-stella-end.withering_sword": "Withering Sword",
+	"item.mod-stella-end.withering_bow": "Withering Bow",
+	"item.mod-stella-end.dark_blaze_core": "Dark Blaze Core",
+	"item.mod-stella-end.wither_core": "Wither Core",
+	"enchantment.mod-stella-end.wither_drain": "Wither Drain",
+	"entity.mod-stella-end.wither_knight": "Wither Knight"
 }

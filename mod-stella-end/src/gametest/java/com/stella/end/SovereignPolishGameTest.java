@@ -311,7 +311,7 @@ public class SovereignPolishGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:sovereign_sealed", maxTicks = 160)
-	public void theWayToTheRestAreaStaysSealedFromTheTriggerUntilTheSovereignDies(final GameTestHelper helper) {
+	public void theWayToTheRestAreaStaysSealedFromTheTriggerUntilTheSovereignAndBothKnightsDie(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		List<BlockPos> door = new ArrayList<>();
 		int slab = EndCastle.slabY(EndCastle.FLOORS);
@@ -327,7 +327,7 @@ public class SovereignPolishGameTest {
 			}
 		}
 		helper.assertTrue(!door.isEmpty(), "floor 6 has no barrier door");
-		long[] shut = new long[3];
+		long[] shut = new long[4];
 		helper.startSequence()
 			.thenExecute(() -> {
 				shut[0] = door.stream().filter(pos -> end.getBlockState(pos).is(Blocks.BARRIER)).count();
@@ -341,12 +341,19 @@ public class SovereignPolishGameTest {
 			})
 			.thenIdle(3)
 			.thenExecute(() -> {
+				// The Sovereign rose with two knights, so its death alone leaves the way shut.
+				shut[3] = door.stream().filter(pos -> end.getBlockState(pos).is(Blocks.BARRIER)).count();
+				WitherKnights.alive(end).forEach(knight -> EndTestSupport.slay(end, knight));
+			})
+			.thenIdle(3)
+			.thenExecute(() -> {
 				shut[2] = door.stream().filter(pos -> end.getBlockState(pos).isAir()).count();
-				EndTestSupport.result("sovereignSealed", "cells=" + door.size() + " beforeTrigger=" + shut[0] + " whileAlive=" + shut[1] + " afterDeath=" + shut[2]);
+				EndTestSupport.result("sovereignSealed", "cells=" + door.size() + " beforeTrigger=" + shut[0] + " whileAlive=" + shut[1] + " afterSovereignDeath=" + shut[3] + " afterKnights=" + shut[2]);
 				EndTestSupport.fresh(helper);
 				helper.assertTrue(shut[0] == door.size(), "the door was open before the Sovereign rose: " + shut[0] + " of " + door.size());
 				helper.assertTrue(shut[1] == door.size(), "the door opened while the Sovereign lived: " + shut[1] + " of " + door.size());
-				helper.assertTrue(shut[2] == door.size(), "the door stayed shut after the Sovereign died: " + shut[2] + " of " + door.size());
+				helper.assertTrue(shut[3] == door.size(), "the door opened with the knights alive: " + shut[3] + " of " + door.size());
+				helper.assertTrue(shut[2] == door.size(), "the door stayed shut after the Sovereign and both knights died: " + shut[2] + " of " + door.size());
 			})
 			.thenSucceed();
 	}

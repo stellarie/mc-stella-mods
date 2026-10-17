@@ -19,6 +19,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -26,7 +27,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The boss of floor 6: a blaze that does not move, bursts soul charges in every direction, rains them from above,
  * volleys them at players, withers what it hits and calls undead blazes. It rises when a player reaches the middle step
- * of the stair into its hall. Its death opens the barrier door to the rest area, and it rises again later.
+ * of the stair into its hall, with two Wither Knights beside it. It leaves a dark blaze core. The barrier door to the
+ * rest area opens when it and both knights are dead, and it rises again later.
  */
 public final class UndeadSovereign {
 	public static final String TAG = "mod-stella-end.sovereign";
@@ -115,6 +117,11 @@ public final class UndeadSovereign {
 
 	/** Raises the Sovereign at the arena anchor and shuts the door. Null when one stands, or the level refuses it. */
 	public static @Nullable Blaze spawn(final ServerLevel end) {
+		return spawn(end, true);
+	}
+
+	/** As {@link #spawn(ServerLevel)}, with the knights left out when {@code knights} is false. */
+	public static @Nullable Blaze spawn(final ServerLevel end, final boolean knights) {
 		if (current(end) != null) {
 			return null;
 		}
@@ -147,6 +154,9 @@ public final class UndeadSovereign {
 			adopt(end, blaze);
 		}
 		BehaviorLog.info("[END] sovereign risen at={} health={} level={}", blaze.blockPosition(), blaze.getMaxHealth(), LevelBridge.read(blaze));
+		if (knights) {
+			WitherKnights.raise(end);
+		}
 		return blaze;
 	}
 
@@ -422,11 +432,12 @@ public final class UndeadSovereign {
 		}
 	}
 
-	/** The Sovereign fell: the door to the rest area opens, the time is stored, and the bar closes. */
+	/** The Sovereign fell: it leaves a dark blaze core, the time is stored, the bar closes, and the door opens if both knights are down. */
 	private static void fall(final ServerLevel end, final Blaze sovereign) {
 		long now = EndClock.now(end);
-		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), true);
+		sovereign.spawnAtLocation(end, new ItemStack(EndItems.darkBlazeCore()));
 		EndCastles.setState(end, EndCastles.state(end).withSovereignDeadAt(now));
+		ExitSeal.update(end);
 		closeBar();
 		id = null;
 		held = null;

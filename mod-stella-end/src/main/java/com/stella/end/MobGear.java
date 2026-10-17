@@ -45,12 +45,15 @@ public final class MobGear {
 		return registry.get(id).orElse(null);
 	}
 
-	/** Every enchantment that supports the item, curses left out: a curse works against the wearer. */
+	/**
+	 * Every enchantment that supports the item, curses left out: a curse works against the wearer. Wither Drain stays out
+	 * too, because it comes from a wither core and a mob that held it would heal itself from the players it withers.
+	 */
 	public static List<Holder<Enchantment>> pool(final ItemStack stack, final Registry<Enchantment> registry, final Collection<Identifier> excluded) {
 		List<Holder<Enchantment>> found = new ArrayList<>();
 		registry.listElements().forEach(holder -> {
 			boolean skipped = holder.unwrapKey().map(key -> excluded.contains(key.identifier())).orElse(false);
-			if (!skipped && holder.value().canEnchant(stack) && !holder.is(EnchantmentTags.CURSE)) {
+			if (!skipped && !holder.is(WitherDrain.KEY) && holder.value().canEnchant(stack) && !holder.is(EnchantmentTags.CURSE)) {
 				found.add(holder);
 			}
 		});

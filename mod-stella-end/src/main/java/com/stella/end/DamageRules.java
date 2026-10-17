@@ -7,8 +7,8 @@ import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.level.Level;
 
 /**
- * Every change this mod makes to a blow before it lands: the roost and the crystals ease the dragon's damage taken, and
- * the draconic blade adds to the damage a mob of the End takes from it.
+ * Every change this mod makes to a blow before it lands: the roost and the crystals ease the dragon's damage taken, the
+ * draconic blade adds to the damage a mob of the End takes from it, and a refined withering arm hits harder.
  */
 public final class DamageRules {
 	private DamageRules() {
@@ -29,6 +29,6 @@ public final class DamageRules {
 			&& source.getDirectEntity() == attacker && attacker.getMainHandItem().is(DraconicGear.item(DraconicGear.BLADE))) {
 			result *= 1.0F + (float) DraconicGear.END_BONUS;
 		}
-		return result;
+		return WitheringArms.scale(victim, source, result);
 	}
 }

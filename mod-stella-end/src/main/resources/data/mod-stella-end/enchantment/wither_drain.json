@@ -1,0 +1,12 @@
+{
+	"description": { "translate": "enchantment.mod-stella-end.wither_drain" },
+	"supported_items": "#mod-stella-end:wither_drain_enchantable",
+	"primary_items": "#mod-stella-end:wither_drain_enchantable",
+	"slots": ["mainhand"],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": { "base": 30, "per_level_above_first": 0 },
+	"max_cost": { "base": 60, "per_level_above_first": 0 },
+	"anvil_cost": 8,
+	"effects": {}
+}

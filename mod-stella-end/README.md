@@ -139,8 +139,9 @@ game test skips time with `EndClock.advance`, because the game clock barely move
   350,000. Without the rpg mod the attribute ceiling cuts it.
 - It stands at the arena anchor. Its speed is zero, it has no gravity, and its place is reset every tick.
 - It rises when a player reaches the middle step of the stair from floor 5 into the hall, in any of its 3 lanes
-  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing, and the way to the rest area
-  stays shut until it dies. Its boss bar shows to players within 48 blocks.
+  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing. Two Wither Knights rise with
+  it, and the way to the rest area stays shut until it and both knights are dead. Its boss bar shows to players within 48
+  blocks.
 - Every 100 ticks it bursts soul charges in all directions: 16 level, evenly spaced, and 4 more at pitches of +60, +30, -20
   and -45 degrees. A burst needs a player in range.
 - Every 40 ticks it rains 6 soul charges straight down from 12 to 16 blocks over random points within 7 blocks of it. The hall
@@ -151,8 +152,8 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - Every 200 ticks it calls 3 undead blazes, up to 12 alive. The record of identities keeps the count.
 - An undead blaze is a vanilla blaze at level 115, tagged `mod-stella-end.undead`. Its charges fly at half the vanilla
   fireball speed and apply wither I for 80 ticks. The client draws it grey, from an attachment the server syncs.
-- Its death opens the barrier door to the rest area and stores the time. It rises again after 36,000 ticks and shuts the
-  door behind it.
+- It drops a dark blaze core. Its death stores the time and opens the barrier door to the rest area once both knights are
+  dead too (`ExitSeal`). It rises again after 36,000 ticks and shuts the door behind it.
 
 ### The dragon
 
@@ -212,6 +213,53 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 | --- | --- | --- |
 | `mod-stella-rpg:health-scale` | call | states health numbers times the scale |
 
+The equips mod is reached by identifier and custom data key only. `mod-stella-equips-enchants:weapon/chill` and `weapon/waveform` go on
+the knight swords when the registry holds them. The key `stella_refine` feeds the refine bonus of the withering arms. Without the
+equips mod the knight swords hold their random enchantments alone, the arms get no bonus, and the anvil charges levels.
+
+## Slice C: knights, withering arms, cores
+
+### The Wither Knights
+
+- Two wither skeletons rise with the Sovereign, one on each side of it: the chill knight and the waveform knight
+  (`WitherKnights`). Each has a fixed maximum health of 125,000 (stored as for the Sovereign), scale 1.6, level 120, a custom
+  name, and no life span. A knight that stands when the Sovereign rises again is not raised twice: the saved state keeps one
+  bit for each kind that stands (`EndState.knights`).
+- Gear: full netherite with 6 random enchantments on every piece, and a withering sword with 6 random enchantments and the
+  equips enchantment `weapon/chill` (chill knight) or `weapon/waveform` (waveform knight) at level 4. Without the equips mod the
+  sword holds its 6 alone. The random pool is `MobGear`'s, and it leaves Wither Drain out. Nothing a knight wears drops.
+- A knight blinks next to a target more than 8 blocks away, then waits 120 ticks (`TeleportChaseGoal`).
+- Charged slash (`KnightSlashGoal`): a target within 12 blocks and in sight starts a wind-up of 40 ticks. The knight stands
+  still and faces the aim it took at the start. Then everything not of the castle on a line 1 block wide and 16 long takes
+  1.5 times the knight's attack and is thrown back along the line with strength 2. Soul flame (`EndBlocks.soulFlame`, which
+  burns out after 120 ticks) stands on every open cell of the line that has a floor. A wall, a cell solid at knee and head
+  height, ends the line. A blow that moves the knight more than a block cancels the wind-up. The wait is 200 ticks of the
+  End clock.
+- The barrier door of floor 6 opens when the Sovereign and both knights are dead, in any order. The Sovereign leaves a dark
+  blaze core and each knight a wither core.
+
+### The withering sword and bow
+
+- Netherite grade: both mend with a netherite ingot, so the equips refine takes them as grade 4. Every hit applies wither I
+  for 100 ticks. A refined arm hits 5 per cent harder for every full 3 refine levels, read from the custom data key
+  `stella_refine` that the equips mod writes (the key is copied, not imported). The bow has 1024 durability.
+- A castle floor wither skeleton drops the sword at 1 per cent, and a castle floor skeleton archer drops the bow at 1 per
+  cent (`WitheringArms.DROP_CHANCE`). A knight, a dragon airdrop mob and a mob outside the castle drop neither.
+- The textures are vanilla stand-ins: the netherite sword, the bow, the blaze powder and the nether star.
+
+### The cores and their imbues
+
+- At an anvil a weapon (anything with a base attack damage, or a bow or crossbow) and one core give the weapon one imbue.
+  A dark blaze core gives Blaze Soul. A wither core gives the `mod-stella-end:wither_drain` enchantment at level 1. A weapon
+  takes each imbue once. The price is 8 levels, or 8 emeralds when the equips anvil runs (`CoreImbue`, `AnvilMenuMixin`).
+- Blaze Soul: every 40 ticks the aura of a player who holds the weapon in either hand strikes one random hostile mob within 6
+  blocks for the player's `ATTACK_DAMAGE` attribute (`BlazeSoul`). Only mobs that are `Enemy` can be chosen. The aura keeps its
+  own tick count, which a test moves on with `BlazeSoul.advance`.
+- Wither Drain: a hit applies wither I and notes the attacker. Each wither blow that target then takes heals the attacker by
+  the health it took. Wither from any other source heals nobody (`WitherDrain`, `HurtMemo`). The call divides the heal by the
+  rpg health scale because that mod multiplies every heal by it. The enchantment is in no enchanting table or random loot
+  pool, and the random pool of the castle mobs leaves it out.
+
 ## Logging
 
 Behaviour lines go through the mod logger at INFO from the game test source set only. The shipped jar prints none.
@@ -223,6 +271,9 @@ Behaviour lines go through the mod logger at INFO from the game test source set 
   and the ruined rooms on the rooftop.
 - Open one vault on a floor and read its contents.
 - Fight a wither skeleton on its horse, and an archer: judge the blink, the volley, the slowness aura and the difficulty.
-- Fight the Sovereign, then the dragon. Judge the flight, the swoop, the roost and the difficulty.
+- Fight the Sovereign with its two Wither Knights, then the dragon. Judge the flight, the swoop, the roost, the knights' blink
+  and charged slash, and the difficulty.
+- Take a dark blaze core and a wither core to an anvil with a weapon. Judge the Blaze Soul aura, the Wither Drain heal, and the
+  withering sword and bow.
 - Watch an undead blaze and the Sovereign on a client: both draw grey.
 - Smith one piece of the ultimate gear at a smithing table and refine it at the equips anvil.

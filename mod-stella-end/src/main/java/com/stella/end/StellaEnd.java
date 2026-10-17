@@ -21,6 +21,10 @@ public final class StellaEnd implements ModInitializer {
 		UndeadBlazes.register();
 		SoulCharges.register();
 		UndeadSovereign.register();
+		WitherKnights.register();
+		WitheringArms.register();
+		WitherDrain.register();
+		BlazeSoul.register();
 		EndDragons.register();
 		BehaviorLog.info("[END] initialized");
 	}

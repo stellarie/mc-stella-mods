@@ -56,6 +56,10 @@ final class EndTestSupport {
 		UndeadSovereign.reset();
 		UndeadBlazes.reset();
 		SoulCharges.reset();
+		WitherKnights.reset();
+		BlazeSoul.reset();
+		WitherDrain.reset();
+		WitheringArms.reset();
 		EndCastles.ensureBuilt(end);
 		releaseRing(end);
 		hold(end, EndCastle.min());
@@ -66,7 +70,7 @@ final class EndTestSupport {
 	/** The state every slice B test starts from: nobody has died, the door is shut and the arena holds no flame. */
 	private static void restoreArena(final ServerLevel end) {
 		EndState state = EndCastles.state(end);
-		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false));
+		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false, 0));
 		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), false);
 		int y = EndCastle.standY(EndCastle.FLOORS);
 		for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
@@ -97,6 +101,16 @@ final class EndTestSupport {
 				|| entity.entityTags().stream().anyMatch(tag -> tag.startsWith(EndMobs.FLOOR_TAG) || tag.startsWith("mod-stella-end"))) {
 				entity.discard();
 			}
+		}
+	}
+
+	/**
+	 * Kills a creature, again while an enchantment worn by it negates the blow. The equips mod's Deflection turns away a
+	 * share of hits, kill blows included, and a knight carries six random enchantments on every piece.
+	 */
+	static void slay(final ServerLevel end, final net.minecraft.world.entity.LivingEntity target) {
+		for (int attempt = 0; attempt < 400 && target.isAlive(); attempt++) {
+			target.kill(end);
 		}
 	}
 
@@ -275,8 +289,15 @@ final class EndTestSupport {
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1.0E6);
 		zombie.setHealth(zombie.getMaxHealth());
 		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
-		end.addFreshEntity(zombie);
+		admitted(end, zombie, at);
 		return zombie;
+	}
+
+	/** The level refuses an entity whose chunk has not loaded its entities; a refused stand-in would sit in a test and never tick. */
+	private static void admitted(final ServerLevel end, final Entity entity, final Vec3 at) {
+		if (!end.addFreshEntity(entity)) {
+			throw new IllegalStateException("the level refused " + entity.getType().getDescriptionId() + " at " + at);
+		}
 	}
 
 	/** A dummy that falls and flies when thrown, as a creature with AI on does, yet cannot walk off. */
@@ -289,7 +310,7 @@ final class EndTestSupport {
 		zombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
 		zombie.setHealth(zombie.getMaxHealth());
 		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
-		end.addFreshEntity(zombie);
+		admitted(end, zombie, at);
 		return zombie;
 	}
 
