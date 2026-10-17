@@ -16,7 +16,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
@@ -25,12 +24,10 @@ import org.jspecify.annotations.Nullable;
  * events keep, not a box query, so a neighbour's mob never counts and a despawned one stops counting at once.
  */
 public final class FloorSpawner {
-	/** Hostiles a floor holds. The floor witch counts outside this. */
+	/** Hostiles a floor holds. */
 	public static final int CAP = 24;
 	public static final int INTERVAL = 40;
-	public static final int RETARGET_INTERVAL = 100;
 	public static final int ACTIVE_RANGE = 48;
-	public static final double HUNT_RANGE = 16.0;
 	public static final double SAFE_DISTANCE = 10.0;
 	public static final int BATCH = 4;
 	/** The highest floor with a spawner: floor 6 belongs to the boss, which makes its own mobs. */
@@ -38,7 +35,6 @@ public final class FloorSpawner {
 	private static final int ATTEMPTS = 16;
 
 	private static final Map<Integer, Set<UUID>> HOSTILES = new HashMap<>();
-	private static final Map<Integer, Set<UUID>> WITCHES = new HashMap<>();
 	private static int ticks;
 
 	private FloorSpawner() {
@@ -59,15 +55,9 @@ public final class FloorSpawner {
 		return live(end, HOSTILES.get(floor));
 	}
 
-	public static @Nullable Mob witch(final ServerLevel end, final int floor) {
-		List<Mob> witches = live(end, WITCHES.get(floor));
-		return witches.isEmpty() ? null : witches.get(0);
-	}
-
 	/** Forgets every record and restarts the clocks. A server stop does this; a test does it to start clean. */
 	public static void reset() {
 		HOSTILES.clear();
-		WITCHES.clear();
 		ticks = 0;
 	}
 
@@ -98,11 +88,10 @@ public final class FloorSpawner {
 		if (floor == 0 || !(entity instanceof Mob) || !level.dimension().equals(Level.END)) {
 			return;
 		}
-		Map<Integer, Set<UUID>> book = EndMobs.isWitch(entity) ? WITCHES : HOSTILES;
 		if (loaded) {
-			book.computeIfAbsent(floor, key -> new LinkedHashSet<>()).add(entity.getUUID());
-		} else if (book.containsKey(floor)) {
-			book.get(floor).remove(entity.getUUID());
+			HOSTILES.computeIfAbsent(floor, key -> new LinkedHashSet<>()).add(entity.getUUID());
+		} else if (HOSTILES.containsKey(floor)) {
+			HOSTILES.get(floor).remove(entity.getUUID());
 		}
 	}
 
@@ -129,9 +118,6 @@ public final class FloorSpawner {
 		if (ticks % INTERVAL == 0) {
 			topUp(end);
 		}
-		if (ticks % RETARGET_INTERVAL == 0) {
-			retarget(end);
-		}
 	}
 
 	private static void topUp(final ServerLevel end) {
@@ -145,19 +131,14 @@ public final class FloorSpawner {
 				continue;
 			}
 			CastleLayout.FloorPlan plan = layout.floor(floor);
-			if (witch(end, floor) == null) {
-				BlockPos spot = spot(end, floor, plan, 2);
-				if (spot != null) {
-					EndMobs.spawnWitch(end, floor, spot);
-				}
-			}
 			int have = hostiles(end, floor).size();
 			int missing = Math.min(BATCH, CAP - have);
 			int spawned = 0;
 			for (int i = 0; i < missing; i++) {
 				EndMobs.Kind kind = EndMobs.pick(floor, end.getRandom().nextInt(EndMobs.ROLLS));
-				BlockPos spot = spot(end, floor, plan, height(kind));
-				if (spot != null && EndMobs.spawn(end, floor, kind, spot) != null) {
+				boolean mounted = kind == EndMobs.Kind.WITHER_SKELETON && EndMobs.rollMount(end.getRandom());
+				BlockPos spot = kind == EndMobs.Kind.ARCHER ? ledgeSpot(end, floor, plan) : spot(end, floor, plan, height(kind, mounted));
+				if (spot != null && EndMobs.spawn(end, floor, kind, spot, mounted) != null) {
 					spawned++;
 				}
 			}
@@ -178,22 +159,35 @@ public final class FloorSpawner {
 		return true;
 	}
 
-	private static void retarget(final ServerLevel end) {
-		for (int floor = 1; floor <= TOP_FLOOR; floor++) {
-			for (Mob mob : hostiles(end, floor)) {
-				if (mob instanceof Enderman enderman) {
-					EndMobs.hunt(end, enderman);
-				}
-			}
-		}
-	}
-
-	private static int height(final EndMobs.Kind kind) {
+	/** The clear height a spawn needs: a rider on a skeleton horse is nearly three blocks tall, and one block of air is kept over it. */
+	private static int height(final EndMobs.Kind kind, final boolean mounted) {
 		return switch (kind) {
-			case WITHER_SKELETON -> 2;
-			case ENDERMAN -> 3;
+			case WITHER_SKELETON -> mounted ? 4 : 2;
+			case ARCHER -> 2;
 			case SHULKER -> 1;
 		};
+	}
+
+	/** A cell of a ledge of the floor, with the planks under it and clear air over it; null if none turns up. */
+	private static @Nullable BlockPos ledgeSpot(final ServerLevel end, final int floor, final CastleLayout.FloorPlan plan) {
+		List<CastleLayout.Ledge> ledges = plan.ledges();
+		if (ledges.isEmpty()) {
+			return null;
+		}
+		for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+			CastleLayout.Ledge ledge = ledges.get(end.getRandom().nextInt(ledges.size()));
+			int i = end.getRandom().nextInt(ledge.length());
+			BlockPos feet = new BlockPos(EndCastle.MIN_X + ledge.x(i), EndCastle.standY(floor) + CastleLayout.Ledge.RISE, EndCastle.MIN_Z + ledge.z(i));
+			if (end.hasChunkAt(feet) && standable(end, feet, 2) && !nearAPlayer(end, feet) && vacant(end, feet)) {
+				return feet;
+			}
+		}
+		return null;
+	}
+
+	/** Whether no creature already stands in the cell. */
+	private static boolean vacant(final ServerLevel end, final BlockPos feet) {
+		return end.getEntitiesOfClass(Mob.class, new net.minecraft.world.phys.AABB(feet).inflate(0.4, 0.0, 0.4).expandTowards(0.0, 1.0, 0.0), Mob::isAlive).isEmpty();
 	}
 
 	/** A random spawn cell of the plan with solid ground, clear air, and every player far enough away; null if none turns up. */
@@ -202,7 +196,7 @@ public final class FloorSpawner {
 		for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
 			int[] cell = cells.get(end.getRandom().nextInt(cells.size()));
 			BlockPos feet = new BlockPos(EndCastle.MIN_X + cell[0], EndCastle.standY(floor), EndCastle.MIN_Z + cell[1]);
-			if (end.hasChunkAt(feet) && standable(end, feet, clearance) && !nearAPlayer(end, feet)) {
+			if (end.hasChunkAt(feet) && standable(end, feet, clearance) && !nearAPlayer(end, feet) && vacant(end, feet)) {
 				return feet;
 			}
 		}

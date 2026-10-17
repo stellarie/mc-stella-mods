@@ -18,6 +18,7 @@ import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
@@ -31,12 +32,15 @@ import net.minecraft.world.item.equipment.EquipmentAssets;
 
 /**
  * The items only the End holds: the void shard, the smithing template of the ultimate gear, four relics that give fixed
- * bonuses in the off hand, the dragon scale, and the draconic weapons and armour.
+ * bonuses in the off hand, the dragon scale, the draconic weapons and armour, the withering sword and bow, and the dark
+ * blaze core and wither core.
  */
 public final class EndItems {
 	public static final String SHARD_ID = "void_shard";
 	public static final List<String> RELIC_IDS = List.of("ender_heart", "shulker_carapace", "wither_fang", "void_walker_charm");
 	public static final Identifier SMITHING_ID = StellaEnd.id("draconic_smithing");
+	public static final String DARK_BLAZE_CORE = "dark_blaze_core";
+	public static final String WITHER_CORE = "wither_core";
 
 	/** A sword swings at 1.6 a second; the staff keeps that speed so a stat that scales swings scales every staff alike. */
 	private static final double SWORD_SPEED_MODIFIER = -2.4;
@@ -45,10 +49,13 @@ public final class EndItems {
 	private static final int STAFF_DURABILITY = 640;
 	private static final int STAFF_ENCHANTABILITY = 14;
 	private static final int BOW_DURABILITY = 2031;
+	private static final int WITHERING_BOW_DURABILITY = 1024;
 	private static final TagKey<Item> REPAIRS_ARMOR = TagKey.create(Registries.ITEM, StellaEnd.id("repairs_draconic_armor"));
 	private static final ResourceKey<EquipmentAsset> ARMOR_ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, StellaEnd.id("draconic"));
 
 	private static Item shard;
+	private static Item darkBlazeCore;
+	private static Item witherCore;
 	private static final List<Item> RELICS = new ArrayList<>();
 
 	private EndItems() {
@@ -61,6 +68,7 @@ public final class EndItems {
 			RELICS.add(Registry.register(BuiltInRegistries.ITEM, StellaEnd.id(name), relic));
 		}
 		registerGear();
+		registerArms();
 		Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, SMITHING_ID, DraconicSmithingRecipe.SERIALIZER);
 	}
 
@@ -88,6 +96,15 @@ public final class EndItems {
 			String id = DraconicGear.ARMOR.get(i);
 			put(id, new Item(properties(id).humanoidArmor(material, types[i]).attributes(armorAttributes(material, types[i])).rarity(Rarity.EPIC).fireResistant()));
 		}
+	}
+
+	private static void registerArms() {
+		// The numbers of a vanilla netherite sword; the ingot that repairs it comes from the netherite tool material.
+		put(WitheringArms.SWORD_ID, new Item(properties(WitheringArms.SWORD_ID).sword(ToolMaterial.NETHERITE, 3.0F, -2.4F).rarity(Rarity.RARE).fireResistant()));
+		put(WitheringArms.BOW_ID, new BowItem(properties(WitheringArms.BOW_ID).durability(WITHERING_BOW_DURABILITY).repairable(Items.NETHERITE_INGOT)
+			.enchantable(ToolMaterial.NETHERITE.enchantmentValue()).rarity(Rarity.RARE).fireResistant()));
+		darkBlazeCore = Registry.register(BuiltInRegistries.ITEM, StellaEnd.id(DARK_BLAZE_CORE), new Item(properties(DARK_BLAZE_CORE).rarity(Rarity.EPIC)));
+		witherCore = Registry.register(BuiltInRegistries.ITEM, StellaEnd.id(WITHER_CORE), new Item(properties(WITHER_CORE).rarity(Rarity.EPIC)));
 	}
 
 	private static void put(final String id, final Item item) {
@@ -126,6 +143,16 @@ public final class EndItems {
 
 	public static Item shard() {
 		return shard;
+	}
+
+	/** The Sovereign's drop. */
+	public static Item darkBlazeCore() {
+		return darkBlazeCore;
+	}
+
+	/** Each Wither Knight's drop. */
+	public static Item witherCore() {
+		return witherCore;
 	}
 
 	public static List<Item> relics() {

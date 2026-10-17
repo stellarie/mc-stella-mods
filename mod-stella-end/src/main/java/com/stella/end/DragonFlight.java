@@ -11,7 +11,8 @@ import net.minecraft.world.phys.Vec3;
 final class DragonFlight {
 	private static final double EASE = 0.2;
 	private static final double ARRIVE_GAIN = 0.2;
-	private static final double ORBIT_RADIUS = 22.0;
+	/** The ring the dragon circles on, round the hover point. */
+	static final double ORBIT_RADIUS = 22.0;
 	private static final double ORBIT_LEAD = 0.5;
 	/** The cruise had this speed before the polish, and now has {@link #CRUISE_SHARE} of it. */
 	private static final double CRUISE_BEFORE = 1.2;
@@ -37,13 +38,12 @@ final class DragonFlight {
 		move(dragon, state, distance < 1.0E-6 ? Vec3.ZERO : to.scale(speed / distance));
 	}
 
-	/** Circles over the roof: it chases a point a little ahead of itself on the ring round the hover point. */
+	/** Circles over the roof at one height: it chases a point a little ahead of itself on the ring round the hover point. */
 	static void orbit(final EnderDragon dragon, final DragonState state, final double speed) {
 		Vec3 centre = Rooftop.hoverPoint();
 		Vec3 here = dragon.position();
 		double angle = Math.atan2(here.z - centre.z, here.x - centre.x) + ORBIT_LEAD;
-		double bob = Math.sin(dragon.tickCount / 40.0) * 3.0;
-		Vec3 ahead = new Vec3(centre.x + Math.cos(angle) * ORBIT_RADIUS, centre.y + bob, centre.z + Math.sin(angle) * ORBIT_RADIUS);
+		Vec3 ahead = new Vec3(centre.x + Math.cos(angle) * ORBIT_RADIUS, centre.y, centre.z + Math.sin(angle) * ORBIT_RADIUS);
 		arrive(dragon, state, ahead, speed);
 	}
 

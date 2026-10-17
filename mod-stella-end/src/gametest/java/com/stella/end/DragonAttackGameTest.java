@@ -194,11 +194,15 @@ public class DragonAttackGameTest {
 		Arena arena = arena(helper, crystals);
 		Zombie near = EndTestSupport.mobileDummy(arena.end(), new Vec3(PLAYER_X + 2.0, DECK_TOP, PLAYER_Z));
 		Zombie far = EndTestSupport.mobileDummy(arena.end(), new Vec3(-12.5, DECK_TOP, -12.5));
+		// A wyvern rider's arrow or a fire charge that hits a stand-in knocks it up on its own account.
+		// A stand-in that takes no damage still takes the dive's push, which sets its velocity directly.
+		near.setPermanentlyInvulnerable(true);
+		far.setPermanentlyInvulnerable(true);
 		double[] peakNear = new double[1];
 		double[] peakFar = new double[1];
 		int[] fireballs = new int[1];
-		double[] liftNear = {Double.NaN};
-		double[] liftFar = {Double.NaN};
+		Vec3[] seenNear = new Vec3[1];
+		Vec3[] seenFar = new Vec3[1];
 		boolean[] counted = new boolean[1];
 		helper.onEachTick(() -> {
 			// A hurt dragon flings nothing by its wings.
@@ -210,10 +214,9 @@ public class DragonAttackGameTest {
 			peakFar[0] = Math.max(peakFar[0], far.getY() - DECK_TOP);
 			if (!counted[0] && !arena.state().dives().isEmpty()) {
 				counted[0] = true;
-				// At most one tick of gravity and drag
-				// has worn the 1.6 down.
-				liftNear[0] = near.getDeltaMovement().y;
-				liftFar[0] = far.getDeltaMovement().y;
+				// At most one tick of gravity and drag has worn the push down.
+				seenNear[0] = near.getDeltaMovement();
+				seenFar[0] = far.getDeltaMovement();
 				for (UUID id : arena.state().dives().get(0).charges()) {
 					fireballs[0] += arena.end().getEntity(id) instanceof SmallFireball ? 1 : 0;
 				}
@@ -226,28 +229,42 @@ public class DragonAttackGameTest {
 			.thenIdle(15)
 			.thenExecute(() -> {
 				DragonState.Dive landed = arena.state().dives().get(0);
-				boolean liftedNear = landed.lifted().contains(near.getUUID());
-				boolean liftedPlayer = landed.lifted().contains(arena.player().getUUID());
-				boolean liftedFar = landed.lifted().contains(far.getUUID());
+				Vec3 impact = landed.impact();
+				Vec3 pushNear = landed.pushed().get(near.getUUID());
+				boolean pushedPlayer = landed.pushed().containsKey(arena.player().getUUID());
+				boolean pushedFar = landed.pushed().containsKey(far.getUUID());
 				int thrown = fireballs[0];
-				EndTestSupport.result(environment, "impact=" + landed.impact() + " lifted=" + landed.lifted().size() + " liftNear=" + liftNear[0] + " liftFar=" + liftFar[0] + " peakNear=" + peakNear[0] + " peakFar=" + peakFar[0]
-					+ " charges=" + landed.charges().size());
-				double impactHeight = landed.impact().y;
+				double worstSide = 0.0;
+				double worstUp = -Double.MAX_VALUE;
+				for (Vec3 push : landed.pushed().values()) {
+					worstSide = Math.max(worstSide, Math.hypot(push.x, push.z));
+					worstUp = Math.max(worstUp, push.y);
+				}
+				boolean awayFromImpact = pushNear != null && pushNear.x * (near.getX() - impact.x) + pushNear.z * (near.getZ() - impact.z) > 0.0;
+				double sideNear = seenNear[0] == null ? Double.NaN : Math.hypot(seenNear[0].x, seenNear[0].z);
+				boolean onRoof = Rooftop.contains(near.getX(), near.getY(), near.getZ()) && Rooftop.contains(arena.player().getX(), arena.player().getY(), arena.player().getZ());
+				EndTestSupport.result(environment, "impact=" + impact + " pushed=" + landed.pushed().size() + " worstSide=" + worstSide + " worstUp=" + worstUp + " sideNear=" + sideNear
+					+ " upNear=" + (seenNear[0] == null ? Double.NaN : seenNear[0].y) + " peakNear=" + peakNear[0] + " peakFar=" + peakFar[0] + " onRoof=" + onRoof + " charges=" + landed.charges().size());
+				double impactHeight = impact.y;
 				leave(helper, arena);
 				helper.assertTrue(impactHeight <= DECK_TOP + 3.0, "the dragon dived to " + impactHeight + ", deck top " + DECK_TOP);
-				helper.assertTrue(liftedNear && liftedPlayer, "the dive lifted near " + liftedNear + ", player " + liftedPlayer);
-				helper.assertTrue(!liftedFar, "the dive lifted a stand-in beyond " + DragonRules.DIVE_RADIUS + " blocks");
-				helper.assertTrue(liftNear[0] > DragonRules.DIVE_LIFT - 0.2 && liftNear[0] <= DragonRules.DIVE_LIFT + 1.0E-6, "the lifted stand-in went up at " + liftNear[0]);
-				helper.assertTrue(Math.abs(liftFar[0]) < 0.3, "the far stand-in went up at " + liftFar[0]);
-				helper.assertTrue(peakNear[0] > 1.0, "the lifted stand-in rose only " + peakNear[0]);
-				helper.assertTrue(peakFar[0] < 0.5, "the far stand-in rose " + peakFar[0]);
+				helper.assertTrue(DragonRules.DIVE_KNOCKBACK <= 0.8 && DragonRules.DIVE_UP_CAP <= 0.2, "the dive constants are " + DragonRules.DIVE_KNOCKBACK + " and " + DragonRules.DIVE_UP_CAP);
+				helper.assertTrue(pushNear != null && pushedPlayer, "the dive pushed near " + (pushNear != null) + ", player " + pushedPlayer);
+				helper.assertTrue(!pushedFar, "the dive pushed a stand-in beyond " + DragonRules.DIVE_RADIUS + " blocks");
+				helper.assertTrue(worstSide <= 0.8 && worstSide <= DragonRules.DIVE_KNOCKBACK + 1.0E-9, "a dive push ran sideways at " + worstSide);
+				helper.assertTrue(worstUp <= 0.2, "a dive push ran upward at " + worstUp);
+				helper.assertTrue(awayFromImpact && Math.hypot(pushNear.x, pushNear.z) > 0.3, "the push on the near stand-in was " + pushNear + " from the impact " + impact);
+				helper.assertTrue(seenNear[0] != null && sideNear > 0.05 && sideNear <= 0.8 && seenNear[0].y <= 0.2, "the near stand-in moved at " + seenNear[0]);
+				helper.assertTrue(peakNear[0] < 0.3, "the pushed stand-in rose " + peakNear[0]);
+				helper.assertTrue(Math.abs(seenFar[0].y) < 0.3 && peakFar[0] < 0.5, "the far stand-in moved at " + seenFar[0] + " and rose " + peakFar[0]);
+				helper.assertTrue(onRoof, "the dive threw someone off the rooftop disc");
 				helper.assertTrue(fire ? thrown == DragonRules.DIVE_CHARGES : landed.charges().isEmpty(), "the dive threw " + landed.charges().size() + " fire charges");
 			})
 			.thenSucceed();
 	}
 
 	@GameTest(environment = "mod-stella-end-test:dragon_dive", maxTicks = 500)
-	public void aDiveDropsOntoTheRoofAndThrowsEveryoneWithinEightBlocksUpAtOnePointSix(final GameTestHelper helper) {
+	public void aDiveShovesEveryoneWithinEightBlocksSidewaysAtSixTenthsAndNeverUp(final GameTestHelper helper) {
 		dive(helper, "dragonDive", false);
 	}
 

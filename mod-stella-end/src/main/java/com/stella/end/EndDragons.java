@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -76,6 +77,14 @@ public final class EndDragons {
 			if (level.dimension().equals(Level.END)) {
 				tick(level);
 			}
+		});
+		// A bed or an anchor in the End blows with this damage type, and the game lets it past the dragon's guard.
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+			boolean refused = entity instanceof EnderDragon && entity.level().dimension().equals(Level.END) && source.is(DamageTypes.BAD_RESPAWN_POINT);
+			if (refused) {
+				BehaviorLog.info("[END] dragon refuses a respawn point blast of {}", amount);
+			}
+			return !refused;
 		});
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> reset());
 		Wyverns.register();
@@ -213,7 +222,6 @@ public final class EndDragons {
 					DragonFlight.orbit(dragon, state, DragonFlight.CRUISE * speed);
 					if (!roof.isEmpty() && now >= state.nextAttackAt) {
 						DragonAttacks.begin(end, dragon, state, now);
-						state.nextAttackAt = now + DragonRules.ATTACK_PERIOD;
 					}
 				}
 			}
@@ -228,7 +236,7 @@ public final class EndDragons {
 			if (DragonRoost.over(state, now)) {
 				switchTo(state, roofEmpty ? DragonState.Mode.PASSIVE : DragonState.Mode.AWAKE, now);
 			}
-		} else if (DragonRoost.due(dragon, state)) {
+		} else if (DragonRoost.due(dragon, state, now)) {
 			DragonPerch.interrupt(state, now);
 			DragonRoost.begin(dragon, state, now);
 		} else if (state.mode == DragonState.Mode.PERCH) {
@@ -247,6 +255,9 @@ public final class EndDragons {
 
 	private static void switchTo(final DragonState state, final DragonState.Mode mode, final long now) {
 		BehaviorLog.info("[END] dragon mode {} -> {} clock={}", state.mode, mode, now);
+		if (mode == DragonState.Mode.AWAKE && state.mode == DragonState.Mode.PASSIVE) {
+			state.awokeAt = now;
+		}
 		state.mode = mode;
 		state.modeSince = now;
 		state.current = null;

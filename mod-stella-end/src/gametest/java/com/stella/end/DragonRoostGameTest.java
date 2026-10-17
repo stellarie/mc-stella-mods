@@ -212,18 +212,14 @@ public class DragonRoostGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:roost_weights", maxTicks = 300)
-	public void afterTheRoostTheSwoopAndTheDiveCountDouble(final GameTestHelper helper) {
+	public void afterTheRoostTheSwoopAndTheDiveComeTwiceInTheRound(final GameTestHelper helper) {
 		Fight fight = fight(helper);
 		Map<DragonState.Attack, Integer> before = new EnumMap<>(DragonState.Attack.class);
 		Map<DragonState.Attack, Integer> after = new EnumMap<>(DragonState.Attack.class);
-		int[] totals = new int[2];
 		helper.startSequence()
 			.thenIdle(5)
 			.thenExecute(() -> {
-				totals[0] = fight.state().totalWeight();
-				for (int roll = 0; roll < totals[0]; roll++) {
-					before.merge(fight.state().pick(roll), 1, Integer::sum);
-				}
+				fight.state().cycle().forEach(attack -> before.merge(attack, 1, Integer::sum));
 				fight.healTo(0.51);
 				fight.hit(0.02);
 			})
@@ -231,16 +227,13 @@ public class DragonRoostGameTest {
 			.thenExecute(() -> EndClock.advance(fight.end(), DragonRules.ROOST_TICKS))
 			.thenIdle(3)
 			.thenExecute(() -> {
-				totals[1] = fight.state().totalWeight();
-				for (int roll = 0; roll < totals[1]; roll++) {
-					after.merge(fight.state().pick(roll), 1, Integer::sum);
-				}
+				fight.state().cycle().forEach(attack -> after.merge(attack, 1, Integer::sum));
 				EndTestSupport.result("roostWeights", "before=" + before + " after=" + after);
 				EndTestSupport.fresh(helper);
 				helper.assertTrue(before.getOrDefault(DragonState.Attack.SWOOP, 0) == 1 && before.getOrDefault(DragonState.Attack.BARRAGE, 0) == 1
-					&& before.getOrDefault(DragonState.Attack.DIVE, 0) == 1 && before.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the weights before the roost are " + before);
+					&& before.getOrDefault(DragonState.Attack.DIVE, 0) == 1 && before.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the round before the roost is " + before);
 				helper.assertTrue(after.getOrDefault(DragonState.Attack.SWOOP, 0) == 2 && after.getOrDefault(DragonState.Attack.DIVE, 0) == 2
-					&& after.getOrDefault(DragonState.Attack.BARRAGE, 0) == 1 && after.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the weights after the roost are " + after);
+					&& after.getOrDefault(DragonState.Attack.BARRAGE, 0) == 1 && after.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the round after the roost is " + after);
 			})
 			.thenSucceed();
 	}

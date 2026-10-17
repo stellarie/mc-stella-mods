@@ -19,8 +19,10 @@ final class CastleCrown {
 	private static final int CENTRE = SIZE / 2;
 	private static final int DECK = EndCastle.ROOF_Y;
 	/** Cells of the disc at this squared distance from its middle or more belong to the parapet ring. */
-	private static final int RIM_FROM = 420;
+	private static final int RIM_FROM = CastleLayout.PARAPET_FROM;
 	private static final int PARAPET = 4;
+	/** The walls of the hatch house stand this high over the deck; its roof lies on top of them. */
+	private static final int HOUSE_HEIGHT = 4;
 
 	private CastleCrown() {
 	}
@@ -33,6 +35,8 @@ final class CastleCrown {
 		towers(site);
 		parapet(site);
 		cover(site);
+		ruins(site);
+		hatchHouse(site);
 	}
 
 	private static int beyond(final int x, final int z) {
@@ -119,16 +123,32 @@ final class CastleCrown {
 				}
 			}
 		}
-		int top = flight.z(CastleLayout.Flight.HOLE_FROM, 0);
-		int lastHole = flight.z(CastleLayout.Flight.STEPS - 2, 0);
-		int left = flight.x(0, 0) - 1;
-		int right = flight.x(0, CastleLayout.Flight.WIDTH - 1) + 1;
-		for (int z = top; z <= lastHole; z++) {
-			site.putShaped(left, DECK + 1, z, CastleBlocks.BRICK_WALL);
-			site.putShaped(right, DECK + 1, z, CastleBlocks.BRICK_WALL);
+	}
+
+	/**
+	 * A small house over the hatch: full walls on both sides and behind the hole, and a roof four blocks over the deck.
+	 * The front, where the stair comes out, stays open.
+	 */
+	private static void hatchHouse(final CastleSite site) {
+		CastleLayout.Rect house = site.layout.roof().hatchHouse();
+		CastleLayout.Flight flight = site.layout.rest().exit();
+		int roof = DECK + HOUSE_HEIGHT + 1;
+		for (int x = house.x0(); x <= house.x1(); x++) {
+			for (int z = house.z0(); z <= house.z1(); z++) {
+				boolean side = x == house.x0() || x == house.x1();
+				boolean back = z == house.z0();
+				if (side || back) {
+					for (int up = 1; up <= HOUSE_HEIGHT; up++) {
+						site.put(x, DECK + up, z, up == HOUSE_HEIGHT && (x + z) % 2 != 0 ? CastleBlocks.CRACKED : CastleBlocks.BRICKS);
+					}
+				}
+				site.put(x, roof, z, side || back ? CastleBlocks.BRICKS : CastleBlocks.slab(Blocks.END_STONE_BRICK_SLAB, SlabType.TOP));
+			}
 		}
+		int lastHole = flight.z(CastleLayout.Flight.STEPS - 2, 0);
 		for (int lane = 0; lane < CastleLayout.Flight.WIDTH; lane++) {
-			site.putShaped(flight.x(0, lane), DECK + 1, top - 1, CastleBlocks.BRICK_WALL);
+			int x = flight.x(0, lane);
+			site.fill(x, DECK + 1, house.z0() + 1, x, DECK + HOUSE_HEIGHT, lastHole + 1, CastleBlocks.AIR);
 		}
 	}
 
@@ -180,6 +200,54 @@ final class CastleCrown {
 		}
 	}
 
+	/** Whether a cell lies in a ruined room or within a cell of one. */
+	private static boolean inRuin(final CastleSite site, final int x, final int z) {
+		for (CastleLayout.Ruin ruin : site.layout.roof().ruins()) {
+			CastleLayout.Rect b = ruin.bounds();
+			if (x >= b.x0() - 1 && x <= b.x1() + 1 && z >= b.z0() - 1 && z <= b.z1() + 1) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The ruined rooms the plan sets in the corners of the deck, off the dive lanes. Corners stand full height in
+	 * pillars, the walls break off at ragged heights, two doorways stand open, and a roof of slabs holds in places.
+	 * Nothing rises over the height the plan gives.
+	 */
+	private static void ruins(final CastleSite site) {
+		Random random = site.random(33);
+		for (CastleLayout.Ruin ruin : site.layout.roof().ruins()) {
+			CastleLayout.Rect b = ruin.bounds();
+			int height = ruin.height();
+			boolean alongX = random.nextBoolean();
+			int gapOne = alongX ? b.x0() + 1 + random.nextInt(b.x1() - b.x0() - 1) : b.z0() + 1 + random.nextInt(b.z1() - b.z0() - 1);
+			int gapTwo = alongX ? b.x0() + 1 + random.nextInt(b.x1() - b.x0() - 1) : b.z0() + 1 + random.nextInt(b.z1() - b.z0() - 1);
+			for (int x = b.x0(); x <= b.x1(); x++) {
+				for (int z = b.z0(); z <= b.z1(); z++) {
+					boolean edgeX = x == b.x0() || x == b.x1();
+					boolean edgeZ = z == b.z0() || z == b.z1();
+					if (edgeX || edgeZ) {
+						boolean corner = edgeX && edgeZ;
+						boolean doorway = !corner && (alongX ? ((z == b.z0() && x == gapOne) || (z == b.z1() && x == gapTwo)) : ((x == b.x0() && z == gapOne) || (x == b.x1() && z == gapTwo)));
+						int top = corner ? height : Math.max(1, height - random.nextInt(4));
+						for (int up = 1; up <= top && !doorway; up++) {
+							site.put(x, DECK + up, z, corner ? CastleBlocks.PILLAR : random.nextInt(5) == 0 ? CastleBlocks.CRACKED : CastleBlocks.BRICKS);
+						}
+					} else {
+						if (random.nextInt(100) < 45) {
+							site.put(x, DECK + height, z, CastleBlocks.slab(Blocks.END_STONE_BRICK_SLAB, SlabType.TOP));
+						}
+						if (random.nextInt(9) == 0) {
+							site.put(x, DECK + 1, z, random.nextBoolean() ? CastleBlocks.COBBLE : CastleBlocks.CRACKED);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	/** Cover in a ring about the middle: half walls, pillar stumps and rubble mounds, with the portal and four lanes left clear. */
 	private static void cover(final CastleSite site) {
 		Random random = site.random(32);
@@ -190,7 +258,7 @@ final class CastleCrown {
 			int dz = (int) Math.round(radius * Math.sin(angle));
 			boolean lane = Math.abs(dx) <= 3 || Math.abs(dz) <= 3;
 			boolean hatch = dx >= 4 && dx <= 13 && dz >= 9 && dz <= 20;
-			if (lane || hatch) {
+			if (lane || hatch || inRuin(site, CENTRE + dx, CENTRE + dz)) {
 				continue;
 			}
 			int x = CENTRE + dx;

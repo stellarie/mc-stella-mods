@@ -8,20 +8,16 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enderman;
-import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
-/** What each kind of castle mob carries and does: kits, the spawn mix, the enderman's hunt, the elite witch's aura. */
+/** What each kind of castle mob carries and does: kits, the spawn mix, the shield goal, the roster. */
 public class CastleMobsGameTest {
 	@GameTest(environment = "mod-stella-end-test:mobs_mix", maxTicks = 20)
 	public void theSpawnMixGivesFloorsOneAndTwoNoShulkersAndTheRestFifteenPercent(final GameTestHelper helper) {
@@ -32,18 +28,18 @@ public class CastleMobsGameTest {
 				counts[EndMobs.pick(floor, roll).ordinal()]++;
 			}
 			int skeletons = counts[EndMobs.Kind.WITHER_SKELETON.ordinal()];
-			int endermen = counts[EndMobs.Kind.ENDERMAN.ordinal()];
+			int archers = counts[EndMobs.Kind.ARCHER.ordinal()];
 			int shulkers = counts[EndMobs.Kind.SHULKER.ordinal()];
 			boolean low = floor <= 2;
-			if (skeletons != (low ? 850 : 700) || endermen != 150 || shulkers != (low ? 0 : 150)) {
-				bad.append(" floor ").append(floor).append(": ").append(skeletons).append('/').append(endermen).append('/').append(shulkers);
+			if (skeletons != (low ? 750 : 600) || archers != 250 || shulkers != (low ? 0 : 150)) {
+				bad.append(" floor ").append(floor).append(": ").append(skeletons).append('/').append(archers).append('/').append(shulkers);
 			}
 			if (EndMobs.share(floor, EndMobs.Kind.SHULKER) != shulkers) {
 				bad.append(" floor ").append(floor).append(" share disagrees with the roll");
 			}
 		}
 		EndTestSupport.result("mobsMix", "floorsChecked=" + EndCastle.FLOORS + " bad=" + bad.length());
-		helper.assertTrue(bad.isEmpty(), "spawn mix off the plan (skeleton/enderman/shulker per 1000):" + bad);
+		helper.assertTrue(bad.isEmpty(), "spawn mix off the plan (skeleton/archer/shulker per 1000):" + bad);
 		helper.succeed();
 	}
 
@@ -71,7 +67,7 @@ public class CastleMobsGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:mobs_kit", maxTicks = FloorSpawnerGameTest.FILL_TICKS + 100)
-	public void witherSkeletonsSpawnWithASwordAndAShield(final GameTestHelper helper) {
+	public void witherSkeletonsSpawnWithASwordAShieldAndNetheriteArmor(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		EndTestSupport.joinOnFloor(helper, end, 2);
 		helper.startSequence()
@@ -90,8 +86,8 @@ public class CastleMobsGameTest {
 					if (!mob.getItemBySlot(EquipmentSlot.OFFHAND).is(Items.SHIELD) || !mob.getItemBySlot(EquipmentSlot.OFFHAND).has(DataComponents.BLOCKS_ATTACKS)) {
 						bad.append(" off hand ").append(mob.getItemBySlot(EquipmentSlot.OFFHAND));
 					}
-					if (!mob.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET) || !mob.getItemBySlot(EquipmentSlot.CHEST).is(Items.IRON_CHESTPLATE)
-						|| !mob.getItemBySlot(EquipmentSlot.LEGS).is(Items.IRON_LEGGINGS) || !mob.getItemBySlot(EquipmentSlot.FEET).is(Items.IRON_BOOTS)) {
+					if (!mob.getItemBySlot(EquipmentSlot.HEAD).is(Items.NETHERITE_HELMET) || !mob.getItemBySlot(EquipmentSlot.CHEST).is(Items.NETHERITE_CHESTPLATE)
+						|| !mob.getItemBySlot(EquipmentSlot.LEGS).is(Items.NETHERITE_LEGGINGS) || !mob.getItemBySlot(EquipmentSlot.FEET).is(Items.NETHERITE_BOOTS)) {
 						bad.append(" armor ").append(mob.getItemBySlot(EquipmentSlot.HEAD));
 					}
 				}
@@ -139,64 +135,6 @@ public class CastleMobsGameTest {
 			.thenSucceed();
 	}
 
-	@GameTest(environment = "mod-stella-end-test:mobs_enderman", maxTicks = 400)
-	public void endermenHuntTheNearestPlayerWithoutEyeContactAndAgainEveryHundredTicks(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		ServerPlayer player = EndTestSupport.joinOnFloor(helper, end, 3);
-		CastleLayout.FloorPlan plan = EndCastles.layout(end).floor(3);
-		BlockPos at = EndTestSupport.cellNear(helper, plan, 3, plan.landingX(), plan.landingZ(), 6.0, 12.0);
-		Enderman enderman = (Enderman) EndMobs.spawn(end, 3, EndMobs.Kind.ENDERMAN, at);
-		helper.assertTrue(enderman != null, "the enderman was refused");
-		// With AI on, an enderman teleports at random
-		// out of hunting range.
-		// The retarget then never finds it.
-		enderman.setNoAi(true);
-		// The player looks away from it, and the hunt must not need a stare.
-		player.setYRot(180.0F);
-		boolean onSpawn = enderman.getTarget() == player;
-		helper.startSequence()
-			.thenExecute(() -> enderman.setTarget(null))
-			.thenWaitUntil(() -> helper.assertTrue(enderman.getTarget() == player, "the enderman targets " + enderman.getTarget() + " alive=" + enderman.isAlive()
-				+ " distance=" + enderman.distanceTo(player) + " players=" + end.players().size()))
-			.thenExecute(() -> {
-				EndTestSupport.result("mobsEnderman", "onSpawn=" + onSpawn + " retargeted=" + (enderman.getTarget() == player));
-				EndTestSupport.fresh(helper);
-				helper.assertTrue(onSpawn, "the enderman did not target the player on spawn");
-			})
-			.thenSucceed();
-	}
-
-	@GameTest(environment = "mod-stella-end-test:mobs_elite", maxTicks = 300)
-	public void theEliteWitchHasDoubleHealthAndAWeaknessAura(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		ServerPlayer player = EndTestSupport.joinOnFloor(helper, end, 5);
-		CastleLayout.FloorPlan plan = EndCastles.layout(end).floor(5);
-		BlockPos at = EndTestSupport.cellNear(helper, plan, 5, plan.landingX(), plan.landingZ(), 3.0, 7.0);
-		Witch elite = EndMobs.spawnWitch(end, 5, at);
-		helper.assertTrue(elite != null && EndMobs.isElite(elite), "the floor 5 witch is not elite");
-		// A plain witch of the same level, made by the same bridge, is the yardstick for double health.
-		Witch plain = EntityTypes.WITCH.create(end, net.minecraft.world.entity.EntitySpawnReason.SPAWNER);
-		LevelBridge.claim(plain);
-		LevelBridge.apply(plain, EndLevels.eliteWitchLevel(5));
-		plain.addTag(EndMobs.FLOOR_TAG + "0");
-		plain.snapTo(at.getX() + 0.5, at.getY() + 5, at.getZ() + 0.5, 0.0F, 0.0F);
-		plain.setNoAi(true);
-		end.addFreshEntity(plain);
-		double ratio = elite.getMaxHealth() / plain.getMaxHealth();
-		EndTestSupport.result("mobsElite", "eliteMax=" + elite.getMaxHealth() + " plainMax=" + plain.getMaxHealth() + " ratio=" + ratio);
-		helper.assertTrue(Math.abs(ratio - 2.0) < 0.01, "the elite witch has " + elite.getMaxHealth() + " health against " + plain.getMaxHealth());
-		plain.discard();
-		helper.startSequence()
-			// The aura's weakness is ambient; one from a thrown potion is not, and must not pass for it.
-			.thenWaitUntil(() -> helper.assertTrue(player.hasEffect(MobEffects.WEAKNESS) && player.getEffect(MobEffects.WEAKNESS).isAmbient(),
-				"the aura has not weakened the player yet"))
-			.thenExecute(() -> {
-				EndTestSupport.fresh(helper);
-				helper.assertTrue(elite.getAttribute(Attributes.MAX_HEALTH) != null, "the elite witch lost its health attribute");
-			})
-			.thenSucceed();
-	}
-
 	@GameTest(environment = "mod-stella-end-test:mobs_natural", maxTicks = 100)
 	public void vanillaNaturalSpawningIsRefusedInsideTheCastleVolume(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
@@ -227,7 +165,7 @@ public class CastleMobsGameTest {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		int[] cell = EndCastles.layout(end).floor(4).spawnCells().get(0);
 		BlockPos at = EndTestSupport.world(EndCastle.min(), cell[0], EndCastle.standY(4), cell[1]);
-		Mob mob = EndMobs.spawn(end, 4, EndMobs.Kind.WITHER_SKELETON, at);
+		Mob mob = EndMobs.spawn(end, 4, EndMobs.Kind.WITHER_SKELETON, at, false);
 		helper.assertTrue(mob != null, "the skeleton was refused");
 		List<Mob> recorded = new ArrayList<>(FloorSpawner.hostiles(end, 4));
 		boolean persistent = mob.isPersistenceRequired();

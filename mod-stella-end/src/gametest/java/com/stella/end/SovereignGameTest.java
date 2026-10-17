@@ -30,7 +30,7 @@ public class SovereignGameTest {
 	}
 
 	static Blaze raise(final GameTestHelper helper, final ServerLevel end) {
-		Blaze sovereign = UndeadSovereign.spawn(end);
+		Blaze sovereign = UndeadSovereign.spawn(end, false);
 		helper.assertTrue(sovereign != null, "the Sovereign was not raised");
 		return sovereign;
 	}
@@ -352,6 +352,7 @@ public class SovereignGameTest {
 				Blaze plain = EntityTypes.BLAZE.create(end, EntitySpawnReason.SPAWNER);
 				LevelBridge.claim(plain);
 				plain.setNoAi(true);
+				plain.addTag(EndTestSupport.DUMMY_TAG);
 				plain.snapTo(-7.0, y - 1, -5.0, 0.0F, 0.0F);
 				end.addFreshEntity(plain);
 				rig.level = LevelBridge.read(rig.undead);

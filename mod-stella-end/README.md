@@ -24,10 +24,20 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
   pillars, a market stall, and a lean-to camp with crates and barrels. A paved way leads to the gate, a 3 wide door in the
   south wall of floor 1 under a canopy with banners.
 - **Stairs.** Every stair is a straight flight of 16 steps, 3 lanes wide. The slab over its last three steps is open, so a
-  mob can jump up them.
+  mob can jump up them. Each flight lies against a wall along one whole side, never in the middle of a room.
   - Floors 1 to 3 have one flight each, in a wing of the ring of rooms. None stands in the courtyard.
   - Floor 4 has four flights to floor 5, one along each outer wall of the middle room.
   - Floor 5 has one flight into the south-east corner of the arena. Its middle step is `CastleLayout.sovereignTrigger()`.
+    A wall along the south side of the flight backs it, with one doorway cell at its west end. The floor 4 flights keep all
+    four pinwheel walls, so each lies against a wall along its whole side.
+  - Every run has a rail column on each side, one lane outside it. A low wall climbs the column a step at a time, and a
+    purpur pillar under it at steps 3, 7 and 11 holds it up. A wall or a doorway line takes the place of a rail where it
+    already stands. A low wall also rings the hole where a run comes up through a slab.
+  - The flights of floors 1, 2 and 3 stand in closed shafts. Walls shut a run and its vestibule at its foot (two or three
+    rows deep), and the only doorway is in a side wall of the vestibule. The plan draws a floor again until no cell of its
+    flight can be seen from the way in. On floor 1 that is the gate and the portal landing. On floors 2, 3 and 5 it is the
+    top step and the landing of the arriving flight (for floor 5, the east flight of floor 4). The flights of floor 4 are
+    not hidden.
 - **Floors 1 to 3.** Rooms stand in a ring round a 12 by 12 courtyard. Floor 1 rooms have doorways to it. Floors 2 and 3
   have windows onto it. The courtyard is open air from the floor 1 ground to the floor 4 slab. It holds a fountain, grass,
   flowers and three trees. A world seed and a floor number fix the doorways and the optional merges of rooms.
@@ -42,10 +52,14 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
   and a row of empty chests, and no bed. A stair climbs from it to a hatch in the rooftop, beside the parapet.
 - **Rooftop.** A disc 46 blocks across, centred on the End origin, with a parapet 4 blocks tall and covered arches cut
   into it. The corner pillars rise into it as towers. A ring of half walls, pillar stumps and rubble gives cover. The
-  exit portal at the centre and four lanes to it stay clear. A solid crown of masonry carries the disc.
-- **Dressing.** Every room has props, and windows of glass panes and iron bars. Some have a partial ceiling or a ledge
-  with a ladder. The plan sets 2 to 4 candles in every room. They are the only light: the castle holds no other block
-  that gives light.
+  exit portal at the centre and four lanes to it stay clear. A solid crown of masonry carries the disc. A house with a roof
+  four blocks over the deck covers the hatch. Three or four ruined rooms stand in the corners of the deck, off the lanes, the
+  hatch and the parapet. A ruin is 5 to 7 blocks wide and 4 to 6 blocks tall, with pillars at its corners, broken walls, two
+  open doorways and a roof of slabs in places. The plan draws their number and places from the world seed.
+- **Dressing.** Every room has props, and windows of glass panes and iron bars. Some have a partial ceiling. Every floor
+  from 1 to 5 holds at least two plank ledges, each 3 to 6 cells long and six blocks over the floor, with bars one block
+  high on the open edge and a ladder at the end. The plan keeps them, and the archers spawn on them. The plan sets 2 to 4
+  candles in every room. They are the only light: the castle holds no other block that gives light.
 - The castle is built once, on the first load of a castle chunk or on the first arrival, whichever comes first. The
   End level saves a `built` flag.
 - The castle blocks are in `minecraft:dragon_immune`, so the vanilla dragon cannot break them.
@@ -65,20 +79,31 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
 - Every 40 ticks it tops the floor up to 24 hostile mobs, 4 at a time. The count comes from a recorded set of
   identities that entity load and unload events keep. A floor waits until all four castle chunks have loaded.
 - A spawn stands on solid ground in a room, clear of walls, stairs and props, and at least 10 blocks from every player.
-- The mix is 70 per cent wither skeleton, 15 per cent enderman and 15 per cent shulker. Floors 1 and 2 give the
-  shulker share to wither skeletons.
-- Floors 1 to 5 each keep one witch alive. It counts outside the 24. The floor 5 witch is elite.
+- The mix is 60 per cent wither skeleton, 25 per cent skeleton archer and 15 per cent shulker. Floors 1 and 2 give the
+  shulker share to wither skeletons. The castle spawns no witch and no enderman. A skeleton archer spawns on a ledge.
+- One wither skeleton in ten rides a skeleton horse. The horse takes the cell and not the cap: only the rider counts.
 - Every castle mob is persistent, carries a `mod-stella-end.floor_N` tag, and drops none of its kit.
 
 ### The mobs
 
-- Wither skeleton: netherite sword, shield in the off hand, iron armour. A local shield goal raises the shield when a
-  target is 2.5 to 6 blocks away. The goal stands aside when the mobs mod has put its own shield goal on the mob.
-- Enderman: it targets the nearest player within 16 blocks on spawn and every 100 ticks. It needs no eye contact.
+- Wither skeleton: moves at 0.7 of its base speed and hits at 1.5 times its base damage. It wears full netherite with
+  three random enchantments on every piece and on the sword, and holds a thorns 4 shield in the off hand. When the equips
+  mod is present the sword also holds exactly one of venom 4, chill 4 and waveform 4. The random pool is every
+  enchantment of the registry that supports the item, curses left out. `MobGear` holds these helpers, and any later mob
+  in enchanted netherite reuses them. A local shield goal raises the shield when a target is 2.5 to 6 blocks away. The goal
+  stands aside when the mobs mod has put its own shield goal on the mob.
+- A wither skeleton blinks next to a target more than 8 blocks away, then waits 160 ticks. The landing lies 2.5 to 4.5 blocks
+  from the target, on solid ground, inside the castle volume, with room for the whole mob and its mount
+  (`CastleTeleport`, `TeleportChaseGoal`).
+- Mount: a skeleton horse of level 95, tamed. Players within 5 blocks of it get slowness I, refreshed every 20 ticks. The rider
+  steers the horse, which goes 200 ticks after its rider is gone (`MountGoals`).
+- Skeleton archer: level 110 on every floor, full netherite, a bow. In sight of a target within 24 blocks it looses a volley of
+  12 burning arrows, 3 ticks apart, standing still, then rests 100 ticks. A hurt archer blinks 8 to 16 blocks away, then waits
+  600 ticks (`ArcherVolleyGoal`, `HurtTeleportGoal`).
+- Every timer of hundreds of ticks reads the End clock, so a game test moves it with `EndClock.advance`.
 - Shulker: a melee hit on a closed shulker, from within 4 blocks, throws the attacker back with strength 1.5. An open
   shulker, a far hit, and a projectile do nothing.
-- Elite witch: twice the health, level plus 5, and an aura that weakens players within 8 blocks.
-- Levels: floor `n` mobs are level `100 + 3 * (n - 1)`, 100 to 115. The elite witch is floor level plus 5.
+- Levels: floor `n` wither skeletons are level `100 + 3 * (n - 1)`, 100 to 115. Archers are level 110 and horses level 95.
 
 ### Treasure
 
@@ -114,8 +139,9 @@ game test skips time with `EndClock.advance`, because the game clock barely move
   350,000. Without the rpg mod the attribute ceiling cuts it.
 - It stands at the arena anchor. Its speed is zero, it has no gravity, and its place is reset every tick.
 - It rises when a player reaches the middle step of the stair from floor 5 into the hall, in any of its 3 lanes
-  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing, and the way to the rest area
-  stays shut until it dies. Its boss bar shows to players within 48 blocks.
+  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing. Two Wither Knights rise with
+  it, and the way to the rest area stays shut until it and both knights are dead. Its boss bar shows to players within 48
+  blocks.
 - Every 100 ticks it bursts soul charges in all directions: 16 level, evenly spaced, and 4 more at pitches of +60, +30, -20
   and -45 degrees. A burst needs a player in range.
 - Every 40 ticks it rains 6 soul charges straight down from 12 to 16 blocks over random points within 7 blocks of it. The hall
@@ -126,8 +152,8 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - Every 200 ticks it calls 3 undead blazes, up to 12 alive. The record of identities keeps the count.
 - An undead blaze is a vanilla blaze at level 115, tagged `mod-stella-end.undead`. Its charges fly at half the vanilla
   fireball speed and apply wither I for 80 ticks. The client draws it grey, from an attachment the server syncs.
-- Its death opens the barrier door to the rest area and stores the time. It rises again after 36,000 ticks and shuts the
-  door behind it.
+- It drops a dark blaze core. Its death stores the time and opens the barrier door to the rest area once both knights are
+  dead too (`ExitSeal`). It rises again after 36,000 ticks and shuts the door behind it.
 
 ### The dragon
 
@@ -137,13 +163,20 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - Level 150, with a fixed maximum health of 600,000 (stored as for the Sovereign). The dragon is claimed before the mobs
   mod rolls it.
 - Its cruise is 30 per cent of what it was (`DragonFlight.CRUISE`). The swoop and the dive keep their speed.
-- Passive until a player stands on the rooftop. Awake, it circles and picks an attack every 100 ticks. It calms 200 ticks
+- Passive until a player stands on the rooftop. Awake, it circles the middle of the roof on one ring (22 blocks out, one
+  height) at the cruise and flies its attacks in a fixed cycle: swoop, barrage, dive, airdrop, then again. 100 ticks of
+  cruise (`DragonRules.CRUISE_TICKS`) pass between the end of one attack and the start of the next. It calms 200 ticks
   after the roof empties. The attacks aim at the deck disc, not at a square.
+- It neither roosts nor perches in the 600 ticks after it wakes from passive (`DragonRules.WAKE_GRACE`). A due perch or
+  roost waits for the end of that time.
+- A bed or a respawn anchor that blows in the End does the dragon no harm (`DamageTypes.BAD_RESPAWN_POINT` is refused).
 - Swoop and dive start with a wind-up: the dragon brakes for 20 ticks, hangs still, and winds a spiral of End particles
   round itself until 100 ticks have passed since the wind-up began. Then the attack starts at the nearest player.
 - Swoop: it flies through the nearest player. Everything in its path takes 30 damage and slowness II for 100 ticks.
 - Breath barrage: 12 dragon fireballs, 4 ticks apart, at points on the roof.
-- Dive: it drops onto the roof. Everything within 8 blocks gets an upward velocity of 1.6.
+- Dive: it drops onto the roof. Everything within 8 blocks is shoved away from the impact at 0.6 along the ground
+  (`DIVE_KNOCKBACK`), and none is moving up faster than 0.2 (`DIVE_UP_CAP`). The deck disc is 23 blocks across to its rim,
+  so the shove cannot throw anyone off it.
 - Airdrop: it flies over the middle of the roof and lets go of 2 skeleton archers and 2 wither skeletons in full netherite,
   level 120, 6 to 9 blocks from the middle and 10 blocks over the deck. It adds none while 8 of its airdrop mobs stand.
 - Breath clouds of the dragon's fireballs last 60 ticks in all, the 20 tick wait included, not 600.
@@ -151,14 +184,20 @@ game test skips time with `EndClock.advance`, because the game clock barely move
   damage there. While it sits, 3 breath clouds fall on random points of the deck disc every 5 ticks. The timer runs while
   the dragon is passive or awake, and stands still during the roost.
 - Roost: at half health, once, it lands on the portal for 2,400 ticks and takes a quarter of the damage. Every 100 ticks
-  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double. A
-  roost takes the dragon from a perch.
+  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the cycle holds the swoop and the dive
+  twice (swoop, barrage, dive, airdrop, swoop, dive). A roost takes the dragon from a perch.
 - Crystals: the buff of a pillar follows vanilla's spike order. 1 regeneration, 2 damage plus 20 per cent, 3 damage taken
   minus 15 per cent, 4 speed plus 20 per cent, 5 sixteen barrage shots, 6 knockback resistance, 7 wyvern return in 300
   ticks, 8 swoop slowness IV, 9 dive fire charges, 10 absorption 40 (times the rpg health scale).
 - Wyverns: four phantoms at scale 3, each ridden by a skeleton at scale 1.5 in netherite with a bow, level 130. A rider
   alive means the wyvern has no target, and the wyvern circles the middle of the roof between 8 and 14 blocks over the deck,
   where its rider's bow reaches. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Wyvern spacing: each place owns a quarter of the roof's circle and its wyvern circles a point inside it. Any two wyverns
+  are pushed apart along the ground until they stand 10 blocks from each other (`WYVERN_SPACING`). A swooping wyvern keeps
+  its course and the other gives way.
+- A freed wyvern (its rider dead) breathes and swoops. Every 200 to 400 ticks it drops a dragon breath cloud (60 ticks,
+  instant damage I) within 1.5 blocks of the nearest rooftop player. Every 300 to 500 ticks it flies straight at that
+  player at 1 block a tick and bites on touch. The delays come from `EndClock` and are drawn again after each use.
 - Factions: every mob of the castle (the floor mobs, the Sovereign, the undead blazes, the dragon and its side) is one side.
   Two mixins (`MobTargetMixin`, `LivingEntityAngerMixin`) keep a castle mob from taking another as a target or answering
   its blow. A player, and any creature outside the castle, stays a valid target.
@@ -187,6 +226,53 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 | --- | --- | --- |
 | `mod-stella-rpg:health-scale` | call | states health numbers times the scale |
 
+The equips mod is reached by identifier and custom data key only. `mod-stella-equips-enchants:weapon/chill` and `weapon/waveform` go on
+the knight swords when the registry holds them. The key `stella_refine` feeds the refine bonus of the withering arms. Without the
+equips mod the knight swords hold their random enchantments alone, the arms get no bonus, and the anvil charges levels.
+
+## Slice C: knights, withering arms, cores
+
+### The Wither Knights
+
+- Two wither skeletons rise with the Sovereign, one on each side of it: the chill knight and the waveform knight
+  (`WitherKnights`). Each has a fixed maximum health of 125,000 (stored as for the Sovereign), scale 1.6, level 120, a custom
+  name, and no life span. A knight that stands when the Sovereign rises again is not raised twice: the saved state keeps one
+  bit for each kind that stands (`EndState.knights`).
+- Gear: full netherite with 6 random enchantments on every piece, and a withering sword with 6 random enchantments and the
+  equips enchantment `weapon/chill` (chill knight) or `weapon/waveform` (waveform knight) at level 4. Without the equips mod the
+  sword holds its 6 alone. The random pool is `MobGear`'s, and it leaves Wither Drain out. Nothing a knight wears drops.
+- A knight blinks next to a target more than 8 blocks away, then waits 120 ticks (`TeleportChaseGoal`).
+- Charged slash (`KnightSlashGoal`): a target within 12 blocks and in sight starts a wind-up of 40 ticks. The knight stands
+  still and faces the aim it took at the start. Then everything not of the castle on a line 1 block wide and 16 long takes
+  1.5 times the knight's attack and is thrown back along the line with strength 2. Soul flame (`EndBlocks.soulFlame`, which
+  burns out after 120 ticks) stands on every open cell of the line that has a floor. A wall, a cell solid at knee and head
+  height, ends the line. A blow that moves the knight more than a block cancels the wind-up. The wait is 200 ticks of the
+  End clock.
+- The barrier door of floor 6 opens when the Sovereign and both knights are dead, in any order. The Sovereign leaves a dark
+  blaze core and each knight a wither core.
+
+### The withering sword and bow
+
+- Netherite grade: both mend with a netherite ingot, so the equips refine takes them as grade 4. Every hit applies wither I
+  for 100 ticks. A refined arm hits 5 per cent harder for every full 3 refine levels, read from the custom data key
+  `stella_refine` that the equips mod writes (the key is copied, not imported). The bow has 1024 durability.
+- A castle floor wither skeleton drops the sword at 1 per cent, and a castle floor skeleton archer drops the bow at 1 per
+  cent (`WitheringArms.DROP_CHANCE`). A knight, a dragon airdrop mob and a mob outside the castle drop neither.
+- The textures are vanilla stand-ins: the netherite sword, the bow, the blaze powder and the nether star.
+
+### The cores and their imbues
+
+- At an anvil a weapon (anything with a base attack damage, or a bow or crossbow) and one core give the weapon one imbue.
+  A dark blaze core gives Blaze Soul. A wither core gives the `mod-stella-end:wither_drain` enchantment at level 1. A weapon
+  takes each imbue once. The price is 8 levels, or 8 emeralds when the equips anvil runs (`CoreImbue`, `AnvilMenuMixin`).
+- Blaze Soul: every 40 ticks the aura of a player who holds the weapon in either hand strikes one random hostile mob within 6
+  blocks for 1 plus the attack damage of the weapon in the main hand (`BlazeSoul`). With an empty main hand the hit is 1. The rpg mod multiplies the hit by its health scale where it reaches health. Only mobs that are `Enemy` can be chosen. The aura keeps its
+  own tick count, which a test moves on with `BlazeSoul.advance`.
+- Wither Drain: a hit applies wither I and notes the attacker. Each wither blow that target then takes heals the attacker by
+  the health it took. Wither from any other source heals nobody (`WitherDrain`, `HurtMemo`). The call divides the heal by the
+  rpg health scale because that mod multiplies every heal by it. The enchantment is in no enchanting table or random loot
+  pool, and the random pool of the castle mobs leaves it out.
+
 ## Logging
 
 Behaviour lines go through the mod logger at INFO from the game test source set only. The shipped jar prints none.
@@ -194,7 +280,13 @@ Behaviour lines go through the mod logger at INFO from the game test source set 
 ## Manual acceptance
 
 - Walk from the gate to the rooftop and judge the look of the yard, the rooms, the stairs, the dressing and the mob density.
+  Judge the rails and pillars of the stairs, the shaft of the first flight, the archers on their ledges, the roof over the hatch
+  and the ruined rooms on the rooftop.
 - Open one vault on a floor and read its contents.
-- Fight the Sovereign, then the dragon. Judge the flight, the swoop, the roost and the difficulty.
+- Fight a wither skeleton on its horse, and an archer: judge the blink, the volley, the slowness aura and the difficulty.
+- Fight the Sovereign with its two Wither Knights, then the dragon. Judge the flight, the swoop, the roost, the knights' blink
+  and charged slash, and the difficulty.
+- Take a dark blaze core and a wither core to an anvil with a weapon. Judge the Blaze Soul aura, the Wither Drain heal, and the
+  withering sword and bow.
 - Watch an undead blaze and the Sovereign on a client: both draw grey.
 - Smith one piece of the ultimate gear at a smithing table and refine it at the equips anvil.

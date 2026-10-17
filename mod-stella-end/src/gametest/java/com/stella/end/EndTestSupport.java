@@ -56,6 +56,10 @@ final class EndTestSupport {
 		UndeadSovereign.reset();
 		UndeadBlazes.reset();
 		SoulCharges.reset();
+		WitherKnights.reset();
+		BlazeSoul.reset();
+		WitherDrain.reset();
+		WitheringArms.reset();
 		EndCastles.ensureBuilt(end);
 		releaseRing(end);
 		hold(end, EndCastle.min());
@@ -66,14 +70,17 @@ final class EndTestSupport {
 	/** The state every slice B test starts from: nobody has died, the door is shut and the arena holds no flame. */
 	private static void restoreArena(final ServerLevel end) {
 		EndState state = EndCastles.state(end);
-		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false));
+		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false, 0));
 		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), false);
-		int y = EndCastle.standY(EndCastle.FLOORS);
-		for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
-			for (int z = EndCastle.MIN_Z + 1; z < EndCastle.MIN_Z + EndCastle.SIZE - 1; z++) {
-				BlockPos at = new BlockPos(x, y, z);
-				if (end.getBlockState(at).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
-					end.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+		int floor = EndCastle.standY(EndCastle.FLOORS);
+		// A fireball sets its fire a cell or two above the floor, so the sweep takes three cells of height.
+		for (int y = floor; y <= floor + 2; y++) {
+			for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
+				for (int z = EndCastle.MIN_Z + 1; z < EndCastle.MIN_Z + EndCastle.SIZE - 1; z++) {
+					BlockPos at = new BlockPos(x, y, z);
+					if (end.getBlockState(at).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
+						end.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+					}
 				}
 			}
 		}
@@ -97,6 +104,16 @@ final class EndTestSupport {
 				|| entity.entityTags().stream().anyMatch(tag -> tag.startsWith(EndMobs.FLOOR_TAG) || tag.startsWith("mod-stella-end"))) {
 				entity.discard();
 			}
+		}
+	}
+
+	/**
+	 * Kills a creature, again while an enchantment worn by it negates the blow. The equips mod's Deflection turns away a
+	 * share of hits, kill blows included, and a knight carries six random enchantments on every piece.
+	 */
+	static void slay(final ServerLevel end, final net.minecraft.world.entity.LivingEntity target) {
+		for (int attempt = 0; attempt < 400 && target.isAlive(); attempt++) {
+			target.kill(end);
 		}
 	}
 
@@ -275,8 +292,15 @@ final class EndTestSupport {
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1.0E6);
 		zombie.setHealth(zombie.getMaxHealth());
 		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
-		end.addFreshEntity(zombie);
+		admitted(end, zombie, at);
 		return zombie;
+	}
+
+	/** The level refuses an entity whose chunk has not loaded its entities; a refused stand-in would sit in a test and never tick. */
+	private static void admitted(final ServerLevel end, final Entity entity, final Vec3 at) {
+		if (!end.addFreshEntity(entity)) {
+			throw new IllegalStateException("the level refused " + entity.getType().getDescriptionId() + " at " + at);
+		}
 	}
 
 	/** A dummy that falls and flies when thrown, as a creature with AI on does, yet cannot walk off. */
@@ -289,13 +313,40 @@ final class EndTestSupport {
 		zombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
 		zombie.setHealth(zombie.getMaxHealth());
 		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
-		end.addFreshEntity(zombie);
+		admitted(end, zombie, at);
 		return zombie;
 	}
 
-	/** A player standing on the deck of the rooftop, a given offset from its middle. */
+	/**
+	 * A player standing on the deck of the rooftop, a given offset from its middle. A ruined room or the hatch house may
+	 * stand on the asked cell, so the player takes the nearest open cell of the deck instead.
+	 */
 	static ServerPlayer joinOnRoof(final GameTestHelper helper, final ServerLevel end, final double dx, final double dz) {
-		return join(helper, end, new Vec3(0.5 + dx, EndCastle.ROOF_Y + 1, 0.5 + dz));
+		return join(helper, end, openDeck(EndCastles.layout(end), dx, dz));
+	}
+
+	/** The point of the deck nearest to an offset from its middle that no ruined room or hatch house covers, within a cell of margin. */
+	static Vec3 openDeck(final CastleLayout layout, final double dx, final double dz) {
+		Vec3 best = null;
+		double bestDistance = Double.MAX_VALUE;
+		for (int ox = -8; ox <= 8; ox++) {
+			for (int oz = -8; oz <= 8; oz++) {
+				double x = dx + ox;
+				double z = dz + oz;
+				int lx = (int) Math.floor(16.5 + x);
+				int lz = (int) Math.floor(16.5 + z);
+				boolean covered = layout.roof().ruins().stream().anyMatch(ruin -> ruin.bounds().x0() - 1 <= lx && lx <= ruin.bounds().x1() + 1
+					&& ruin.bounds().z0() - 1 <= lz && lz <= ruin.bounds().z1() + 1);
+				CastleLayout.Rect house = layout.roof().hatchHouse();
+				covered |= house.x0() - 1 <= lx && lx <= house.x1() + 1 && house.z0() - 1 <= lz && lz <= house.z1() + 1;
+				double distance = ox * ox + oz * oz;
+				if (!covered && distance < bestDistance) {
+					best = new Vec3(0.5 + x, EndCastle.ROOF_Y + 1, 0.5 + z);
+					bestDistance = distance;
+				}
+			}
+		}
+		return best;
 	}
 
 	/** An end crystal on the pillar of a spike, as the End's generator puts it. Its chunk is held loaded. */

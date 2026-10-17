@@ -83,7 +83,7 @@ public class AbsentSiblingGameTest {
 			BlockPos at = EndTestSupport.world(EndCastle.min(), cell[0], EndCastle.standY(3), cell[1]);
 			baseline.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0.0F, 0.0F);
 			end.addFreshEntity(baseline);
-			Mob spawned = EndMobs.spawn(end, 3, EndMobs.Kind.WITHER_SKELETON, EndTestSupport.world(EndCastle.min(), cell[0], EndCastle.standY(3), cell[1]));
+			Mob spawned = EndMobs.spawn(end, 3, EndMobs.Kind.WITHER_SKELETON, EndTestSupport.world(EndCastle.min(), cell[0], EndCastle.standY(3), cell[1]), false);
 			EndTestSupport.result("absentLevel", "answered=" + answered + " read=" + level + " spawned=" + (spawned != null)
 				+ " health=" + (spawned == null ? -1 : spawned.getMaxHealth()) + " baseline=" + baseline.getMaxHealth());
 			helper.assertTrue(!answered, "the level bridge claims an answer from an absent mod");

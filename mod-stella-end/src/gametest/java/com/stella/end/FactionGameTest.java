@@ -24,17 +24,24 @@ public class FactionGameTest {
 	static List<Cast> cast(final GameTestHelper helper, final ServerLevel end) {
 		int y = EndCastle.standY(EndCastle.FLOORS);
 		List<Cast> found = new ArrayList<>();
-		found.add(new Cast("wither skeleton", EndMobs.spawn(end, 6, EndMobs.Kind.WITHER_SKELETON, new BlockPos(-3, y, -3))));
-		found.add(new Cast("enderman", EndMobs.spawn(end, 6, EndMobs.Kind.ENDERMAN, new BlockPos(3, y, -3))));
-		found.add(new Cast("witch", EndMobs.spawnWitch(end, 5, new BlockPos(-3, y, 3))));
+		found.add(new Cast("wither skeleton", EndMobs.spawn(end, 6, EndMobs.Kind.WITHER_SKELETON, new BlockPos(-3, y, -3), false)));
+		found.add(new Cast("skeleton archer", EndMobs.spawn(end, 6, EndMobs.Kind.ARCHER, new BlockPos(3, y, -3))));
+		found.add(new Cast("shulker", EndMobs.spawn(end, 6, EndMobs.Kind.SHULKER, new BlockPos(-3, y, 3))));
 		found.add(new Cast("undead blaze", UndeadBlazes.spawn(end, new Vec3(3.5, y + 1.0, 3.5))));
 		Skeleton side = EntityTypes.SKELETON.create(end, EntitySpawnReason.EVENT);
 		Wyverns.own(side, new Vec3(0.5, y, -4.5), EndLevels.ROOFTOP);
 		end.addFreshEntity(side);
 		found.add(new Cast("dragon side skeleton", side));
-		found.add(new Cast("sovereign", UndeadSovereign.spawn(end)));
+		found.add(new Cast("sovereign", UndeadSovereign.spawn(end, false)));
+		List<net.minecraft.world.entity.monster.skeleton.WitherSkeleton> knights = WitherKnights.raise(end);
+		found.add(new Cast("wither knight", knights.isEmpty() ? null : knights.get(0)));
 		for (Cast one : found) {
 			helper.assertTrue(one.mob() != null && one.mob().isAlive(), one.name() + " was not made");
+			// The equips mod's Deflection turns a share of blows away, a hurt-by check included. The castle skeletons and the
+			// knights wear random enchantments, and this test is about sides, so every one stands in plain gear.
+			for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+				one.mob().getItemBySlot(slot).remove(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+			}
 		}
 		return found;
 	}
