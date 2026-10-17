@@ -48,6 +48,7 @@ Run `python scripts/test-build-release.py` to check the release script.
 | `mod-stella-nether/` | Instanced nether raids, entered through the Blaze Guardian beside a nether portal, with a host, a timer and the Blaze Sovereign |
 | `mod-stella-rpg/` | Six stats for every player and mob, point allocation, and level retention on death |
 | `mod-stella-tower/` | An endless tower of floors behind a crying obsidian portal |
+| `mod-stella-end/` | A level 100 End endgame: a six floor castle, the Undead Blaze Sovereign and Wither Knights, a reworked ender dragon with wyverns, and draconic gear |
 
 `main` is the only trunk. See `AGENTS.md` for branch naming, merge rules and mod
 interoperability. Work in a worktree branched from `origin/main`.
