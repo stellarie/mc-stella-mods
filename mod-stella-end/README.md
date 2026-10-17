@@ -253,7 +253,7 @@ equips mod the knight swords hold their random enchantments alone, the arms get 
   A dark blaze core gives Blaze Soul. A wither core gives the `mod-stella-end:wither_drain` enchantment at level 1. A weapon
   takes each imbue once. The price is 8 levels, or 8 emeralds when the equips anvil runs (`CoreImbue`, `AnvilMenuMixin`).
 - Blaze Soul: every 40 ticks the aura of a player who holds the weapon in either hand strikes one random hostile mob within 6
-  blocks for the player's `ATTACK_DAMAGE` attribute (`BlazeSoul`). Only mobs that are `Enemy` can be chosen. The aura keeps its
+  blocks for 1 plus the attack damage of the weapon in the main hand (`BlazeSoul`). With an empty main hand the hit is 1. The rpg mod multiplies the hit by its health scale where it reaches health. Only mobs that are `Enemy` can be chosen. The aura keeps its
   own tick count, which a test moves on with `BlazeSoul.advance`.
 - Wither Drain: a hit applies wither I and notes the attacker. Each wither blow that target then takes heals the attacker by
   the health it took. Wither from any other source heals nobody (`WitherDrain`, `HurtMemo`). The call divides the heal by the

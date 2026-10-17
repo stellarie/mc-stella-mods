@@ -33,6 +33,22 @@ public class BlazeSoulGameTest {
 		return made;
 	}
 
+	/**
+	 * One plus the attack damage the item names for the main hand, read from its own attribute modifiers. The rpg mod keeps
+	 * the attribute of the player at 1, and it multiplies the damage by its health scale where the damage reaches health.
+	 */
+	static float weaponAttack(final ItemStack stack) {
+		double attack = 1.0;
+		for (net.minecraft.world.item.component.ItemAttributeModifiers.Entry entry : stack.getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS,
+			net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY).modifiers()) {
+			if (entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.slot().test(EquipmentSlot.MAINHAND)
+				&& entry.modifier().operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE) {
+				attack += entry.modifier().amount();
+			}
+		}
+		return (float) attack;
+	}
+
 	private static Pig pig(final ServerLevel end, final Vec3 at) {
 		Pig pig = EntityTypes.PIG.create(end, EntitySpawnReason.SPAWNER);
 		LevelBridge.claim(pig);
@@ -68,7 +84,7 @@ public class BlazeSoulGameTest {
 				List<BlazeSoul.Hit> hits = BlazeSoul.hits();
 				Set<UUID> victims = new HashSet<>();
 				List<String> bad = new ArrayList<>();
-				float attack = (float) holder.getAttributeValue(Attributes.ATTACK_DAMAGE);
+				float attack = weaponAttack(holder.getMainHandItem());
 				for (BlazeSoul.Hit hit : hits) {
 					victims.add(hit.victim());
 					if (!hit.holder().equals(holder.getUUID())) {
@@ -161,6 +177,45 @@ public class BlazeSoulGameTest {
 				helper.assertTrue(counts[1] == 3, "the off hand gave " + counts[1] + " strikes in three periods");
 				helper.assertTrue(counts[2] == 0, "a soul sword in the backpack gave " + counts[2] + " strikes");
 				helper.assertTrue(counts[3] == 0, "a plain sword in hand, with a soul sword in the backpack, gave " + counts[3] + " strikes");
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(environment = "mod-stella-end-test:soul_damage", maxTicks = 120)
+	public void theAuraStrikesForOnePlusTheMainHandWeaponAttackSoANetheriteSwordHitsHarderThanAnEmptyHand(final GameTestHelper helper) {
+		ServerLevel end = EndTestSupport.fresh(helper);
+		int row = KnightSlashGameTest.clearRow(end, FROM_X, TO_X, new int[] {-4, 2}, new int[] {-4, -2});
+		Vec3 base = new Vec3(-3.5, FLOOR_Y, row + 0.5);
+		ServerPlayer holder = EndTestSupport.join(helper, end, base);
+		EndTestSupport.dummy(end, base.add(2.0, 0.0, 0.0));
+		var access = helper.getLevel().registryAccess();
+		ItemStack core = new ItemStack(EndItems.darkBlazeCore());
+		ItemStack netherite = CoreImbue.result(access, new ItemStack(Items.NETHERITE_SWORD), core);
+		ItemStack empty = CoreImbue.result(access, new ItemStack(Items.IRON_SWORD), core);
+		helper.assertTrue(!netherite.isEmpty() && !empty.isEmpty(), "the anvil made no Blaze Soul sword");
+		BlazeSoul.reset();
+		float[] damage = new float[2];
+		helper.startSequence()
+			.thenExecute(() -> holder.setItemSlot(EquipmentSlot.MAINHAND, netherite))
+			.thenIdle(3)
+			.thenExecute(() -> BlazeSoul.advance(BlazeSoul.PERIOD))
+			.thenIdle(GRACE)
+			.thenExecute(() -> {
+				damage[0] = BlazeSoul.hits().isEmpty() ? -1.0F : BlazeSoul.hits().get(BlazeSoul.hits().size() - 1).damage();
+				// An empty main hand, with the soul sword in the off hand.
+				holder.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+				holder.setItemSlot(EquipmentSlot.OFFHAND, empty);
+			})
+			.thenIdle(3)
+			.thenExecute(() -> BlazeSoul.advance(BlazeSoul.PERIOD))
+			.thenIdle(GRACE)
+			.thenExecute(() -> {
+				int hits = BlazeSoul.hits().size();
+				damage[1] = hits < 2 ? -1.0F : BlazeSoul.hits().get(hits - 1).damage();
+				EndTestSupport.result("soulDamage", "hits=" + hits + " netherite=" + damage[0] + " emptyHand=" + damage[1] + " expectedNetherite=" + weaponAttack(netherite));
+				EndTestSupport.fresh(helper);
+				helper.assertTrue(damage[1] == 1.0F, "an empty main hand struck for " + damage[1] + ", not 1");
+				helper.assertTrue(damage[0] == weaponAttack(netherite) && damage[0] > damage[1], "a netherite sword struck for " + damage[0] + ", expected " + weaponAttack(netherite));
 			})
 			.thenSucceed();
 	}

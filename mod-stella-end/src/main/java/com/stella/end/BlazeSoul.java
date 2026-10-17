@@ -14,7 +14,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.Item;
@@ -26,7 +28,7 @@ import net.minecraft.world.item.component.ItemLore;
 
 /**
  * Blaze Soul, an imbue of a weapon. Its holder carries a small soul fire aura that, every {@link #PERIOD} ticks,
- * damages one random hostile mob within {@link #RANGE} blocks for the attack value of the holder. The aura keeps its
+ * damages one random hostile mob within {@link #RANGE} blocks for the attack damage of the main-hand weapon of the holder. The aura keeps its
  * own clock, which a test moves on with {@link #advance}.
  */
 public final class BlazeSoul {
@@ -76,8 +78,20 @@ public final class BlazeSoul {
 		return copy;
 	}
 
+	/**
+	 * One plus the attack damage the main-hand item names in its own attribute modifiers, in vanilla units; one with an
+	 * empty hand. The attribute of the holder is no source: the rpg mod keeps it at 1. That mod multiplies the damage by its
+	 * health scale where the damage reaches health, so the amount is not multiplied here.
+	 */
 	public static float damage(final LivingEntity holder) {
-		return (float) holder.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		double attack = 1.0;
+		for (ItemAttributeModifiers.Entry entry : holder.getMainHandItem().getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers()) {
+			if (entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.slot().test(EquipmentSlot.MAINHAND)
+				&& entry.modifier().operation() == AttributeModifier.Operation.ADD_VALUE) {
+				attack += entry.modifier().amount();
+			}
+		}
+		return (float) attack;
 	}
 
 	public static List<Hit> hits() {
