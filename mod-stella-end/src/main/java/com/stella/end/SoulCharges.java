@@ -74,10 +74,15 @@ public final class SoulCharges {
 		}
 	}
 
-	/** Fires a charge at a speed share of the vanilla one. Null when the level refuses it. */
+	/** Fires a charge from the middle of the shooter at a speed share of the vanilla one. Null when the level refuses it. */
 	public static @Nullable SmallFireball fire(final ServerLevel end, final LivingEntity shooter, final Vec3 direction, final double factor) {
+		return fire(end, shooter, shooter.position().add(0.0, shooter.getBbHeight() * 0.5, 0.0), direction, factor);
+	}
+
+	/** Fires a charge from a point; the shooter owns it. Null when the level refuses it. */
+	public static @Nullable SmallFireball fire(final ServerLevel end, final LivingEntity shooter, final Vec3 from, final Vec3 direction, final double factor) {
 		SmallFireball charge = new SmallFireball(end, shooter, direction.normalize());
-		charge.setPos(shooter.getX(), shooter.getY() + shooter.getBbHeight() * 0.5, shooter.getZ());
+		charge.setPos(from);
 		if (!end.addFreshEntity(charge)) {
 			return null;
 		}

@@ -109,12 +109,19 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 
 ### The Undead Blaze Sovereign (floor 6)
 
-- A vanilla blaze at level 120. Base health 600, then the mobs scaling, then the rpg health scale. The attribute ceiling
-  of the rpg mod caps the result at 1,000,000.
+- A vanilla blaze at level 120 with a fixed maximum health of 350,000. The level adds no health: `HealthBridge` drops
+  every modifier but the rpg health scale and stores the base as the total over that scale K, so the scale brings it back to
+  350,000. Without the rpg mod the attribute ceiling cuts it.
 - It stands at the arena anchor. Its speed is zero, it has no gravity, and its place is reset every tick.
-- A player who stands in the arena room raises it. Its boss bar shows to players within 48 blocks.
-- Every 20 ticks it sets 8 to 12 soul flames on random floor cells within 10 blocks. A flame burns out after 100 ticks.
+- It rises when a player reaches the middle step of the stair from floor 5 into the hall, in any of its 3 lanes
+  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing, and the way to the rest area
+  stays shut until it dies. Its boss bar shows to players within 48 blocks.
+- Every 100 ticks it bursts soul charges in all directions: 16 level, evenly spaced, and 4 more at pitches of +60, +30, -20
+  and -45 degrees. A burst needs a player in range.
+- Every 40 ticks it rains 6 soul charges straight down from 12 to 16 blocks over random points within 7 blocks of it. The hall
+  is 14 blocks high, so a column with less room takes the charge as high as it fits.
 - Every 60 ticks it fires 5 soul charges at players within 48 blocks. A volley needs a player in range.
+- A soul charge sets no fire where it lands (`SmallFireballMixin`). The hall holds wood, wool and books.
 - A blow from the Sovereign or from its charge applies wither II for 100 ticks.
 - Every 200 ticks it calls 3 undead blazes, up to 12 alive. The record of identities keeps the count.
 - An undead blaze is a vanilla blaze at level 115, tagged `mod-stella-end.undead`. Its charges fly at half the vanilla
@@ -127,19 +134,34 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - The controller keeps the vanilla dragon in the hover phase and sets its place every tick. It is over the rooftop from
   its first tick, never below the deck, and never past 48 blocks of the origin. Vanilla's phases never run, so the mobs
   mod's phase redirects stay as they were.
-- Level 150. The dragon is claimed before the mobs mod rolls it.
+- Level 150, with a fixed maximum health of 600,000 (stored as for the Sovereign). The dragon is claimed before the mobs
+  mod rolls it.
+- Its cruise is 30 per cent of what it was (`DragonFlight.CRUISE`). The swoop and the dive keep their speed.
 - Passive until a player stands on the rooftop. Awake, it circles and picks an attack every 100 ticks. It calms 200 ticks
-  after the roof empties.
+  after the roof empties. The attacks aim at the deck disc, not at a square.
+- Swoop and dive start with a wind-up: the dragon brakes for 20 ticks, hangs still, and winds a spiral of End particles
+  round itself until 100 ticks have passed since the wind-up began. Then the attack starts at the nearest player.
 - Swoop: it flies through the nearest player. Everything in its path takes 30 damage and slowness II for 100 ticks.
 - Breath barrage: 12 dragon fireballs, 4 ticks apart, at points on the roof.
 - Dive: it drops onto the roof. Everything within 8 blocks gets an upward velocity of 1.6.
+- Airdrop: it flies over the middle of the roof and lets go of 2 skeleton archers and 2 wither skeletons in full netherite,
+  level 120, 6 to 9 blocks from the middle and 10 blocks over the deck. It adds none while 8 of its airdrop mobs stand.
+- Breath clouds of the dragon's fireballs last 60 ticks in all, the 20 tick wait included, not 600.
+- Perch: every 600 to 900 ticks, drawn each time, it lands on the portal for 200 ticks from touchdown. It takes normal
+  damage there. While it sits, 3 breath clouds fall on random points of the deck disc every 5 ticks. The timer runs while
+  the dragon is passive or awake, and stands still during the roost.
 - Roost: at half health, once, it lands on the portal for 2,400 ticks and takes a quarter of the damage. Every 100 ticks
-  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double.
+  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double. A
+  roost takes the dragon from a perch.
 - Crystals: the buff of a pillar follows vanilla's spike order. 1 regeneration, 2 damage plus 20 per cent, 3 damage taken
   minus 15 per cent, 4 speed plus 20 per cent, 5 sixteen barrage shots, 6 knockback resistance, 7 wyvern return in 300
   ticks, 8 swoop slowness IV, 9 dive fire charges, 10 absorption 40 (times the rpg health scale).
-- Wyverns: four phantoms at scale 3, each ridden by a skeleton in netherite with a netherite sword, level 130. A rider
-  alive means the wyvern has no target. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Wyverns: four phantoms at scale 3, each ridden by a skeleton at scale 1.5 in netherite with a bow, level 130. A rider
+  alive means the wyvern has no target, and the wyvern circles the middle of the roof between 8 and 14 blocks over the deck,
+  where its rider's bow reaches. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Factions: every mob of the castle (the floor mobs, the Sovereign, the undead blazes, the dragon and its side) is one side.
+  Two mixins (`MobTargetMixin`, `LivingEntityAngerMixin`) keep a castle mob from taking another as a target or answering
+  its blow. A player, and any creature outside the castle, stays a valid target.
 - Death: one dragon egg and four dragon scales drop beside the portal. The players on the roof share the experience a
   level 120 kill gives on the rpg curve. The dragon's own side leaves with it. Rooftop spawns stay barred for 36,000
   ticks. Vanilla's own egg block is not placed.

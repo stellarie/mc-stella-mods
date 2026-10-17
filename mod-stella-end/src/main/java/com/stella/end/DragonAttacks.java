@@ -3,9 +3,9 @@ package com.stella.end;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,7 +16,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/** The dragon's three attacks: a swoop through a player, a breath barrage at the roof, and a dive onto it. */
+/**
+ * The dragon's four attacks: a swoop through a player, a breath barrage at the roof, a dive onto it, and an airdrop of
+ * skeletons. The swoop and the dive begin with a wind-up in which the dragon hovers.
+ */
 final class DragonAttacks {
 	private static final double STRIKE_HALF = 5.0;
 	private static final double STRIKE_BELOW = 2.0;
@@ -30,7 +33,18 @@ final class DragonAttacks {
 	/** The dive lands no nearer the edge than this many blocks from the roof's middle, so its body stays over the deck. */
 	private static final double DIVE_REACH = 10.0;
 	private static final double BARRAGE_SCATTER = 7.0;
-	private static final double ROOF_HALF = 15.0;
+	/** The barrage lands no nearer the rim of the deck disc than this, so its fire stays inside the parapet. */
+	private static final double BARRAGE_REACH = 19.0;
+	private static final double SPIRAL_RADIUS = 9.0;
+	private static final double SPIRAL_TURN = 0.35;
+	private static final int SPIRAL_ARMS = 2;
+	private static final int SPIRAL_RISE = 50;
+	/** The dragon brakes from its cruise in this many ticks, and hangs still after. */
+	private static final int BRAKE_TICKS = 20;
+	private static final double SPIRAL_HEIGHT = 8.0;
+	private static final double AIRDROP_REACH = 4.0;
+	private static final int AIRDROP_LIMIT = 150;
+	private static final int AIRDROP_REST = 30;
 
 	private DragonAttacks() {
 	}
@@ -49,14 +63,20 @@ final class DragonAttacks {
 		state.pathIndex = 0;
 		state.path.clear();
 		state.attacks.add(new DragonState.AttackRecord(attack, now));
-		switch (attack) {
-			case SWOOP -> beginSwoop(state, dragon, target, now);
-			case BARRAGE -> state.shotsLeft = DragonRules.barrageShots(state.buffs);
-			case DIVE -> beginDive(state, target);
-		}
 		state.nextShotAt = now;
 		state.landedAt = EndState.NEVER;
+		state.droppedAt = EndState.NEVER;
 		state.impact = null;
+		state.launchAt = EndState.NEVER;
+		state.hold = null;
+		switch (attack) {
+			case SWOOP, DIVE -> {
+				state.launchAt = now + DragonRules.WINDUP_TICKS;
+				state.windups.add(new DragonState.Windup(attack, now));
+			}
+			case BARRAGE -> state.shotsLeft = DragonRules.barrageShots(state.buffs);
+			case AIRDROP -> state.path.add(Rooftop.hoverPoint());
+		}
 		BehaviorLog.info("[END] dragon attack={} at={} target={}", attack, now, target.getName().getString());
 	}
 
@@ -78,10 +98,22 @@ final class DragonAttacks {
 			return false;
 		}
 		double speed = DragonRules.speedMultiplier(state.buffs);
+		if (state.launchAt != EndState.NEVER) {
+			if (now < state.launchAt) {
+				windUp(end, dragon, state, now, speed);
+				return true;
+			}
+			if (!launch(end, dragon, state, now)) {
+				state.current = null;
+				state.path.clear();
+				return false;
+			}
+		}
 		boolean going = switch (state.current) {
 			case SWOOP -> swoop(end, dragon, state, now, speed);
 			case BARRAGE -> barrage(end, dragon, state, now, speed);
 			case DIVE -> dive(end, dragon, state, now, speed);
+			case AIRDROP -> airdrop(end, dragon, state, now, speed);
 		};
 		if (!going) {
 			state.current = null;
@@ -90,6 +122,61 @@ final class DragonAttacks {
 		return going;
 	}
 
+
+	/** The dragon hangs where it is and winds a spiral of End particles round itself until the attack starts. */
+	private static void windUp(final ServerLevel end, final EnderDragon dragon, final DragonState state, final long now, final double speed) {
+		DragonState.Windup windup = state.windups.get(state.windups.size() - 1);
+		long age = now - windup.startedAt;
+		if (age < BRAKE_TICKS) {
+			DragonFlight.arrive(dragon, state, dragon.position(), DragonFlight.CRUISE * speed);
+		} else {
+			// The game's own hover phase keeps pulling it a little toward its first hover point.
+			// So the controller holds it where the braking left it.
+			if (state.hold == null) {
+				state.hold = dragon.position();
+			}
+			dragon.setPos(state.hold);
+			state.velocity = Vec3.ZERO;
+			dragon.setDeltaMovement(Vec3.ZERO);
+		}
+		Vec3 centre = dragon.position();
+		int reached = 0;
+		for (int arm = 0; arm < SPIRAL_ARMS; arm++) {
+			double angle = age * SPIRAL_TURN + Math.PI * 2.0 * arm / SPIRAL_ARMS;
+			double tighten = 1.0 - 0.5 * Math.min(1.0, (double) age / DragonRules.WINDUP_TICKS);
+			double rise = (age % SPIRAL_RISE) / (double) SPIRAL_RISE * SPIRAL_HEIGHT;
+			double x = centre.x + Math.cos(angle) * SPIRAL_RADIUS * tighten;
+			double y = centre.y - 2.0 + rise;
+			double z = centre.z + Math.sin(angle) * SPIRAL_RADIUS * tighten;
+			reached += end.sendParticles(ParticleTypes.PORTAL, true, true, x, y, z, 6, 0.3, 0.3, 0.3, 0.05);
+			reached += end.sendParticles(ParticleTypes.END_ROD, true, true, x, y, z, 1, 0.1, 0.1, 0.1, 0.0);
+		}
+		windup.bursts++;
+		windup.sent += reached;
+	}
+
+	/** Starts the swoop or the dive the wind-up led to, at the player nearest now. False, and nothing started, when nobody stands on the roof. */
+	private static boolean launch(final ServerLevel end, final EnderDragon dragon, final DragonState state, final long now) {
+		state.launchAt = EndState.NEVER;
+		state.hold = null;
+		ServerPlayer target = nearest(dragon, Rooftop.players(end));
+		if (target == null) {
+			return false;
+		}
+		state.windups.get(state.windups.size() - 1).launchedAt = now;
+		state.attackStartedAt = now;
+		state.pathIndex = 0;
+		state.path.clear();
+		state.nextShotAt = now;
+		switch (state.current) {
+			case SWOOP -> beginSwoop(state, dragon, target, now);
+			case DIVE -> beginDive(state, target);
+			default -> {
+			}
+		}
+		BehaviorLog.info("[END] dragon {} starts after its wind-up at={} target={}", state.current, now, target.getName().getString());
+		return true;
+	}
 
 	private static void beginSwoop(final DragonState state, final EnderDragon dragon, final ServerPlayer target, final long now) {
 		Vec3 aim = new Vec3(target.getX(), Math.max(target.getY() + 1.0, Rooftop.DECK_Y + 2.0), target.getZ());
@@ -157,25 +244,49 @@ final class DragonAttacks {
 		return true;
 	}
 
-	/** A point on the deck near a player on the roof, or anywhere on it when nobody stands there. */
+	/** A point on the deck disc near a player on the roof, or anywhere on the disc when nobody stands there. */
 	private static Vec3 roofPoint(final ServerLevel end) {
 		List<ServerPlayer> players = Rooftop.players(end);
 		double x;
 		double z;
 		if (players.isEmpty()) {
-			x = (end.getRandom().nextDouble() * 2.0 - 1.0) * ROOF_HALF;
-			z = (end.getRandom().nextDouble() * 2.0 - 1.0) * ROOF_HALF;
+			double angle = end.getRandom().nextDouble() * Math.PI * 2.0;
+			double reach = BARRAGE_REACH * Math.sqrt(end.getRandom().nextDouble());
+			x = Math.cos(angle) * reach;
+			z = Math.sin(angle) * reach;
 		} else {
 			ServerPlayer near = players.get(end.getRandom().nextInt(players.size()));
 			x = near.getX() + end.getRandom().triangle(0.0, BARRAGE_SCATTER);
 			z = near.getZ() + end.getRandom().triangle(0.0, BARRAGE_SCATTER);
 		}
-		return new Vec3(Mth.clamp(x, -ROOF_HALF, ROOF_HALF), Rooftop.DECK_Y + 1.0, Mth.clamp(z, -ROOF_HALF, ROOF_HALF));
+		return onDisc(x, z, BARRAGE_REACH);
+	}
+
+	/** A deck point pulled in along its line to the middle until it lies within {@code reach} of it. */
+	private static Vec3 onDisc(final double x, final double z, final double reach) {
+		double distance = Math.hypot(x, z);
+		double pull = distance > reach ? reach / distance : 1.0;
+		return new Vec3(x * pull, Rooftop.DECK_Y + 1.0, z * pull);
 	}
 
 
 	private static void beginDive(final DragonState state, final ServerPlayer target) {
-		state.path.add(new Vec3(Mth.clamp(target.getX(), -DIVE_REACH, DIVE_REACH), Rooftop.DECK_Y + 1.0, Mth.clamp(target.getZ(), -DIVE_REACH, DIVE_REACH)));
+		state.path.add(onDisc(target.getX(), target.getZ(), DIVE_REACH));
+	}
+
+	/** The dragon flies over the middle of the roof, lets go of its mobs there, and hangs a moment. */
+	private static boolean airdrop(final ServerLevel end, final EnderDragon dragon, final DragonState state, final long now, final double speed) {
+		if (state.droppedAt != EndState.NEVER) {
+			DragonFlight.arrive(dragon, state, dragon.position(), DragonFlight.CRUISE * speed);
+			return now - state.droppedAt < AIRDROP_REST;
+		}
+		Vec3 over = state.path.get(0);
+		DragonFlight.arrive(dragon, state, over, DragonFlight.CRUISE * speed);
+		if (Math.hypot(dragon.getX() - over.x, dragon.getZ() - over.z) < AIRDROP_REACH || now - state.attackStartedAt > AIRDROP_LIMIT) {
+			state.droppedAt = now;
+			DragonAirdrop.drop(end, dragon, state, now);
+		}
+		return true;
 	}
 
 	private static boolean dive(final ServerLevel end, final EnderDragon dragon, final DragonState state, final long now, final double speed) {

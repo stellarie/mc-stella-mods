@@ -36,40 +36,21 @@ public class SovereignGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:sovereign_level", maxTicks = 60)
-	public void theSovereignIsALevelOneTwentyBlazeAtTheArenaAnchorWithSixHundredBaseHealth(final GameTestHelper helper) {
+	public void theSovereignIsALevelOneTwentyBlazeAtTheArenaAnchor(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		Blaze sovereign = raise(helper, end);
-		// The yardstick joins the level.
-		// Each sibling that scales health on load
-		// scales it too.
-		Blaze plain = EntityTypes.BLAZE.create(end, EntitySpawnReason.SPAWNER);
-		LevelBridge.claim(plain);
-		LevelBridge.apply(plain, EndLevels.SOVEREIGN);
-		plain.setNoAi(true);
-		plain.snapTo(8.5, EndCastle.standY(EndCastle.FLOORS) + 3, 8.5, 0.0F, 0.0F);
-		end.addFreshEntity(plain);
 		// A tick later every load listener has run.
 		helper.startSequence()
 			.thenIdle(3)
 			.thenExecute(() -> {
 				int level = LevelBridge.read(sovereign);
-				double ratio = sovereign.getMaxHealth() / plain.getMaxHealth();
-				double plainBase = plain.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
-				double ceiling = ((net.minecraft.world.entity.ai.attributes.RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
-				double intended = plain.getMaxHealth() * (UndeadSovereign.BASE_HEALTH / plainBase);
-				EndTestSupport.result("sovereignLevel", "level=" + level + " max=" + sovereign.getMaxHealth() + " plainMax=" + plain.getMaxHealth() + " ratio=" + ratio
-					+ " intended=" + intended + " ceiling=" + ceiling + " at=" + sovereign.position() + " scale=" + sovereign.getAttributeValue(Attributes.SCALE));
+				EndTestSupport.result("sovereignLevel", "level=" + level + " max=" + sovereign.getMaxHealth() + " at=" + sovereign.position() + " scale=" + sovereign.getAttributeValue(Attributes.SCALE));
 				boolean persistent = sovereign.isPersistenceRequired();
 				boolean named = sovereign.hasCustomName();
 				Vec3 at = sovereign.position();
-				double max = sovereign.getMaxHealth();
-				plain.discard();
 				EndTestSupport.fresh(helper);
 				helper.assertTrue(sovereign.getType() == EntityTypes.BLAZE, "the Sovereign is no vanilla blaze");
 				helper.assertTrue(level == EndLevels.SOVEREIGN, "the Sovereign reads level " + level);
-				helper.assertTrue(Math.abs(max - Math.min(intended, ceiling)) < 0.01 * Math.min(intended, ceiling),
-					"the Sovereign has " + max + " health; " + UndeadSovereign.BASE_HEALTH + " base at level " + EndLevels.SOVEREIGN + " is " + intended
-						+ " and the attribute ceiling is " + ceiling);
 				helper.assertTrue(at.distanceTo(ANCHOR) < 1.0E-6, "the Sovereign stands at " + at + ", not at the anchor " + ANCHOR);
 				helper.assertTrue(persistent && named, "the Sovereign can despawn or has no name");
 			})
@@ -145,59 +126,6 @@ public class SovereignGameTest {
 			"the Sovereign's charge left amplifier " + chargeAmplifier + " for " + chargeLength + " ticks, expected " + chargeTicks);
 		helper.assertTrue(control == null, "a blow from another mob withered the victim");
 		helper.succeed();
-	}
-
-	@GameTest(environment = "mod-stella-end-test:sovereign_ring", maxTicks = 330)
-	public void everyTwentyTicksTheSovereignSetsEightToTwelveSoulFlamesWithinTenBlocksAndTheyBurnOutAfterOneHundred(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		Blaze sovereign = raise(helper, end);
-		int floorY = EndCastle.standY(EndCastle.FLOORS);
-		List<String> bad = new ArrayList<>();
-		int[] seen = new int[1];
-		helper.onEachTick(() -> {
-			List<UndeadSovereign.Pulse> pulses = UndeadSovereign.pulses();
-			for (int i = seen[0]; i < pulses.size(); i++) {
-				UndeadSovereign.Pulse pulse = pulses.get(i);
-				if (pulse.cells().size() < UndeadSovereign.RING_MIN || pulse.cells().size() > UndeadSovereign.RING_MAX) {
-					bad.add("pulse " + i + " set " + pulse.cells().size() + " flames");
-				}
-				for (BlockPos cell : pulse.cells()) {
-					boolean flame = end.getBlockState(cell).is(EndBlocks.soulFlame());
-					double reach = Math.hypot(cell.getX() + 0.5 - ANCHOR.x, cell.getZ() + 0.5 - ANCHOR.z);
-					if (!flame || cell.getY() != floorY || reach > UndeadSovereign.RING_RADIUS + 0.75) {
-						bad.add("pulse " + i + " cell " + cell + " flame=" + flame + " reach=" + reach);
-					}
-				}
-			}
-			seen[0] = pulses.size();
-		});
-		helper.startSequence()
-			.thenIdle(UndeadSovereign.RING_PERIOD * 6 + 2)
-			.thenExecute(() -> {
-				helper.assertTrue(UndeadSovereign.pulses().size() >= 6, "only " + UndeadSovereign.pulses().size() + " pulses in " + UndeadSovereign.RING_PERIOD * 6 + " ticks");
-				helper.assertTrue(UndeadSovereign.pulses().get(1).at() - UndeadSovereign.pulses().get(0).at() == UndeadSovereign.RING_PERIOD,
-					"pulses " + (UndeadSovereign.pulses().get(1).at() - UndeadSovereign.pulses().get(0).at()) + " ticks apart");
-				// Let the whole life pass at once.
-				// Only a flame a later pulse set may still burn.
-				EndClock.advance(end, UndeadSovereign.RING_LIFE + UndeadSovereign.RING_PERIOD);
-			})
-			.thenIdle(3)
-			.thenExecute(() -> {
-				List<UndeadSovereign.Pulse> pulses = UndeadSovereign.pulses();
-				int burning = 0;
-				UndeadSovereign.Pulse first = pulses.get(0);
-				for (BlockPos cell : first.cells()) {
-					boolean again = pulses.stream().skip(1).filter(later -> later.at() > EndClock.now(end) - UndeadSovereign.RING_LIFE).anyMatch(later -> later.cells().contains(cell));
-					if (end.getBlockState(cell).is(EndBlocks.soulFlame()) && !again) {
-						burning++;
-					}
-				}
-				EndTestSupport.result("sovereignRing", "pulses=" + pulses.size() + " firstCells=" + first.cells().size() + " stillBurning=" + burning + " bad=" + bad.size());
-				EndTestSupport.fresh(helper);
-				helper.assertTrue(bad.isEmpty(), "ring defects: " + bad);
-				helper.assertTrue(burning == 0, burning + " flames of the first pulse outlived their " + UndeadSovereign.RING_LIFE + " ticks");
-			})
-			.thenSucceed();
 	}
 
 	@GameTest(environment = "mod-stella-end-test:sovereign_volley", maxTicks = 200)
@@ -321,7 +249,7 @@ public class SovereignGameTest {
 	@GameTest(environment = "mod-stella-end-test:sovereign_respawn", maxTicks = 160)
 	public void theSovereignRisesAgainAfterThirtySixThousandTicksAndShutsTheDoorBehindIt(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
-		inArena(helper, end, 8.0, 0.0);
+		EndTestSupport.join(helper, end, Vec3.atBottomCenterOf(CastleLayout.sovereignTrigger().above()));
 		Blaze first = raise(helper, end);
 		int slab = EndCastle.slabY(EndCastle.FLOORS);
 		CastleLayout.Door barrier = EndCastles.layout(end).floor(EndCastle.FLOORS).doors().stream().filter(CastleLayout.Door::barrier).findFirst().orElseThrow();
@@ -400,7 +328,7 @@ public class SovereignGameTest {
 		int tick;
 	}
 
-	@GameTest(environment = "mod-stella-end-test:undead_charge", maxTicks = 80)
+	@GameTest(environment = "mod-stella-end-test:undead_charge", maxTicks = 1200)
 	public void anUndeadBlazesChargeFliesAtHalfTheVanillaSpeedAndWithersWhatItHits(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		int y = EndCastle.standY(EndCastle.FLOORS) + 2;

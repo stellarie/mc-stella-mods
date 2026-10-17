@@ -29,10 +29,33 @@ public final class DragonRules {
 	public static final int ROOST_ARCHERS = 2;
 	public static final int ROOST_CAP = 12;
 
+	public static final float MAX_HEALTH = 600000.0F;
+	/** A swoop or a dive starts this many ticks after the dragon begins to wind up for it. */
+	public static final int WINDUP_TICKS = 100;
+	public static final int AIRDROP_ARCHERS = 2;
+	public static final int AIRDROP_WITHERS = 2;
+	/** The airdrop adds nothing while this many of its mobs stand. */
+	public static final int AIRDROP_CAP = 8;
+	/** How long a lingering breath cloud of the dragon lasts. */
+	public static final int BREATH_TICKS = 60;
+	public static final int PERCH_MIN = 600;
+	public static final int PERCH_MAX = 900;
+	public static final int PERCH_TICKS = 200;
+	/** A perch that has not touched down by now begins its count anyway. */
+	public static final int PERCH_LAND_LIMIT = 300;
+	public static final int PERCH_CLOUD_PERIOD = 5;
+	public static final int PERCH_CLOUD_COUNT = 3;
+	public static final float CLOUD_RADIUS = 3.0F;
+
 	public static final int WYVERNS = 4;
 	public static final long WYVERN_RESPAWN = 600L;
 	public static final long WYVERN_RESPAWN_BUFFED = 300L;
 	public static final double WYVERN_SCALE = 3.0;
+	public static final double RIDER_SCALE = 1.5;
+	/** A wyvern cruises between these heights over the deck, inside the reach of its rider's bow. */
+	public static final double WYVERN_BAND_LOW = 8.0;
+	public static final double WYVERN_BAND_HIGH = 14.0;
+	public static final double BOW_RANGE = 15.0;
 
 	public static final long REVIVE_TICKS = 144000L;
 	public static final int XP_LEVEL = 120;

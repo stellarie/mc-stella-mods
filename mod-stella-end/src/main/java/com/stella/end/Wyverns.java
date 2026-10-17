@@ -6,6 +6,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -21,12 +22,20 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The dragon's four wyverns: phantoms at three times the size, each ridden by a skeleton in netherite. A wyvern fights
- * only once its rider is dead. A dead one comes back later, while the dragon lives and rooftop spawns are allowed.
+ * The dragon's four wyverns: phantoms at three times the size, each ridden by a bowman in netherite. A wyvern fights
+ * only once its rider is dead, and until then it cruises low over the deck so the bow reaches it. A dead one comes
+ * back later, while the dragon lives and rooftop spawns are allowed.
  */
 final class Wyverns {
 	static final String TAG = "mod-stella-end.wyvern";
 	private static final double RING = 12.0;
+	/** The wyvern's anchor stands this far over the spot it spawns at: the game sets it at spawn, and the circling follows it. */
+	private static final int ANCHOR_LIFT = 5;
+	/** Its circling flies from 8 below its anchor to 1 above, so the anchor stands this high over the deck. */
+	private static final double ANCHOR_HEIGHT = 15.0;
+	private static final double CRUISE_HEIGHT = 11.0;
+	/** A wyvern with a live rider stays this close to the middle of the deck, which is a disc of 23. */
+	private static final double HOLD_REACH = 20.0;
 	private static final int HUNT_PERIOD = 20;
 
 	/** Identities of side mobs that left the world for good, as opposed to leaving it with their chunk. */
@@ -61,6 +70,9 @@ final class Wyverns {
 				} else if (wyvern instanceof Phantom phantom) {
 					Entity rider = slot.rider == null ? null : end.getEntity(slot.rider);
 					boolean riderLives = slot.rider != null && !lost(rider, slot.rider);
+					if (riderLives) {
+						hold(phantom);
+					}
 					if (riderLives && phantom.getTarget() != null) {
 						phantom.setTarget(null);
 					} else if (!riderLives && phantom.getTarget() == null && now % HUNT_PERIOD == 0) {
@@ -74,6 +86,22 @@ final class Wyverns {
 			if (slot.wyvern == null && due && !barred) {
 				pair(end, dragon, state, slot, index);
 			}
+		}
+	}
+
+	/**
+	 * Keeps a wyvern with a live rider between the heights the bow reaches and over the deck. The dragon's wings throw
+	 * back what comes near them, and the wyvern is put back at once.
+	 */
+	private static void hold(final Phantom phantom) {
+		double y = phantom.getY();
+		double held = Mth.clamp(y, Rooftop.DECK_Y + DragonRules.WYVERN_BAND_LOW, Rooftop.DECK_Y + DragonRules.WYVERN_BAND_HIGH);
+		double reach = Math.hypot(phantom.getX(), phantom.getZ());
+		double pull = reach > HOLD_REACH ? HOLD_REACH / reach : 1.0;
+		if (held != y || pull < 1.0) {
+			phantom.setPos(phantom.getX() * pull, held, phantom.getZ() * pull);
+			Vec3 motion = phantom.getDeltaMovement();
+			phantom.setDeltaMovement(pull < 1.0 ? 0.0 : motion.x, 0.0, pull < 1.0 ? 0.0 : motion.z);
 		}
 	}
 
@@ -97,7 +125,8 @@ final class Wyverns {
 
 	private static void pair(final ServerLevel end, final EnderDragon dragon, final DragonState state, final DragonState.Slot slot, final int index) {
 		double angle = Math.PI * 2.0 * index / state.slots.length;
-		Vec3 at = Rooftop.hoverPoint().add(Math.cos(angle) * RING, -2.0, Math.sin(angle) * RING);
+		Vec3 hover = Rooftop.hoverPoint();
+		Vec3 at = new Vec3(hover.x + Math.cos(angle) * RING, Rooftop.DECK_Y + CRUISE_HEIGHT, hover.z + Math.sin(angle) * RING);
 		Phantom wyvern = EntityTypes.PHANTOM.create(end, EntitySpawnReason.EVENT);
 		Skeleton rider = EntityTypes.SKELETON.create(end, EntitySpawnReason.EVENT);
 		if (wyvern == null || rider == null) {
@@ -106,8 +135,11 @@ final class Wyverns {
 		wyvern.addTag(TAG);
 		wyvern.getAttribute(Attributes.SCALE).setBaseValue(DragonRules.WYVERN_SCALE);
 		wyvern.refreshDimensions();
-		own(wyvern, at, EndLevels.WYVERN);
+		// The game takes the anchor from where the wyvern stands as it spawns.
+		// It circles round the middle of the roof, not round its own start.
+		own(wyvern, new Vec3(hover.x, Rooftop.DECK_Y + ANCHOR_HEIGHT - ANCHOR_LIFT, hover.z), EndLevels.WYVERN);
 		wyvern.finalizeSpawn(end, end.getCurrentDifficultyAt(wyvern.blockPosition()), EntitySpawnReason.EVENT, null);
+		wyvern.snapTo(at.x, at.y, at.z, wyvern.getYRot(), 0.0F);
 		kit(rider);
 		own(rider, at, EndLevels.WYVERN);
 		if (!end.addFreshEntity(wyvern)) {
@@ -135,11 +167,13 @@ final class Wyverns {
 	}
 
 	private static void kit(final Skeleton rider) {
+		rider.getAttribute(Attributes.SCALE).setBaseValue(DragonRules.RIDER_SCALE);
+		rider.refreshDimensions();
 		rider.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.NETHERITE_HELMET));
 		rider.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.NETHERITE_CHESTPLATE));
 		rider.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.NETHERITE_LEGGINGS));
 		rider.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.NETHERITE_BOOTS));
-		rider.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.NETHERITE_SWORD));
+		rider.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			rider.setDropChance(slot, 0.0F);
 		}

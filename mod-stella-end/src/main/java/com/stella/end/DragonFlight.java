@@ -13,7 +13,10 @@ final class DragonFlight {
 	private static final double ARRIVE_GAIN = 0.2;
 	private static final double ORBIT_RADIUS = 22.0;
 	private static final double ORBIT_LEAD = 0.5;
-	static final double CRUISE = 1.2;
+	/** The cruise had this speed before the polish, and now has {@link #CRUISE_SHARE} of it. */
+	private static final double CRUISE_BEFORE = 1.2;
+	private static final double CRUISE_SHARE = 0.3;
+	static final double CRUISE = CRUISE_BEFORE * CRUISE_SHARE;
 	static final double RUSH = 2.6;
 	private static final float TURN = 12.0F;
 

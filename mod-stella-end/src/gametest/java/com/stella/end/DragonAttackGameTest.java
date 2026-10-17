@@ -52,6 +52,9 @@ public class DragonAttackGameTest {
 		Arena arena = arena(helper);
 		Zombie dummy = EndTestSupport.dummy(arena.end(), new Vec3(PLAYER_X + 1.5, DECK_TOP, PLAYER_Z));
 		Zombie bystander = EndTestSupport.dummy(arena.end(), new Vec3(-12.5, DECK_TOP, -12.5));
+		// Another mod shortens harmful effects by the victim's stats,
+		// so the length the swoop should leave is read off the same victim.
+		int expectedTicks = SovereignGameTest.lengthOn(dummy, DragonRules.SWOOP_SLOW_TICKS, DragonRules.SWOOP_SLOW_AMPLIFIER);
 		float before = dummy.getHealth();
 		EndDragons.force(arena.dragon(), DragonState.Attack.SWOOP);
 		helper.startSequence()
@@ -72,8 +75,8 @@ public class DragonAttackGameTest {
 				leave(helper, arena);
 				helper.assertTrue(blows.size() >= 1 && blows.stream().allMatch(blow -> blow == DragonRules.SWOOP_DAMAGE), "the swoop handed the game " + blows + ", not blows of " + DragonRules.SWOOP_DAMAGE);
 				helper.assertTrue(lost > 0.0F, "the swoop did no damage");
-				helper.assertTrue(slowness != null && slowness.getAmplifier() == DragonRules.SWOOP_SLOW_AMPLIFIER && slowness.getDuration() > DragonRules.SWOOP_SLOW_TICKS - 20,
-					"the swoop left " + slowed);
+				helper.assertTrue(slowness != null && slowness.getAmplifier() == DragonRules.SWOOP_SLOW_AMPLIFIER && slowness.getDuration() > expectedTicks - 20,
+					"the swoop left " + slowed + ", expected about " + expectedTicks);
 				helper.assertTrue(!sideStruck, "the swoop struck the dragon's own side");
 				helper.assertTrue(!bystanderHurt, "the swoop hurt something far off its path");
 			})
@@ -139,7 +142,7 @@ public class DragonAttackGameTest {
 			for (int i = seen[0]; i < shots.size(); i++) {
 				Entity shot = arena.end().getEntity(shots.get(i).id());
 				Vec3 lands = shot == null ? null : landing(shot);
-				boolean onRoof = lands != null && Math.abs(lands.x - 0.5) <= 17.0 && Math.abs(lands.z - 0.5) <= 17.0;
+				boolean onRoof = lands != null && Rooftop.contains(lands.x, DECK_TOP, lands.z);
 				if (!(shot instanceof DragonFireball) || !onRoof) {
 					bad.add("shot " + i + " is " + shot + " landing " + lands);
 				}
@@ -264,33 +267,38 @@ public class DragonAttackGameTest {
 		ServerLevel end = EndTestSupport.freshWide(helper);
 		EnderDragon dragon = EndDragons.spawn(end);
 		helper.assertTrue(dragon != null, "no dragon was made");
-		double[] flown = new double[2];
+		DragonState state = EndDragons.state(dragon);
+		// The speed the controller sets, not the ground covered:
+		// the game's own pull toward its hover point adds a share to the ground covered
+		// that the slower cruise no longer hides.
+		double[] pace = new double[2];
+		int[] run = new int[1];
+		helper.onEachTick(() -> pace[run[0]] = Math.max(pace[run[0]], state.velocity.length()));
 		helper.startSequence()
 			.thenIdle(10)
 			.thenExecute(() -> {
+				pace[0] = 0.0;
 				homeward(dragon);
 			})
 			.thenIdle(20)
 			.thenExecute(() -> {
-				flown[0] = Rooftop.hoverPoint().x + 44.0 - dragon.getX();
+				run[0] = 1;
 				EndTestSupport.crystal(end, DragonRules.SPEED - 1);
 			})
 			.thenWaitUntil(() -> helper.assertTrue(DragonBuffs.of(dragon).contains(DragonRules.SPEED), "the speed buff has not arrived"))
-			.thenExecute(() -> {
-				dragon.setPos(Rooftop.hoverPoint());
-			})
+			.thenExecute(() -> dragon.setPos(Rooftop.hoverPoint()))
 			.thenIdle(30)
 			.thenExecute(() -> {
+				pace[1] = 0.0;
 				homeward(dragon);
 			})
 			.thenIdle(20)
 			.thenExecute(() -> {
-				flown[1] = Rooftop.hoverPoint().x + 44.0 - dragon.getX();
-				EndTestSupport.result("dragonSpeed", "plain=" + flown[0] + " quick=" + flown[1] + " ratio=" + flown[1] / flown[0]);
+				EndTestSupport.result("dragonSpeed", "plain=" + pace[0] + " quick=" + pace[1] + " ratio=" + pace[1] / pace[0]);
 				EndTestSupport.releaseCrystals(end);
 				EndTestSupport.fresh(helper);
-				helper.assertTrue(flown[0] > 10.0, "the plain dragon flew only " + flown[0] + " blocks");
-				helper.assertTrue(Math.abs(flown[1] / flown[0] - DragonRules.SPEED_BUFF) < 0.06, "the buffed dragon flew " + flown[1] / flown[0] + " times as far");
+				helper.assertTrue(pace[0] > DragonFlight.CRUISE * 0.9 && pace[0] <= DragonFlight.CRUISE + 1.0E-6, "the plain dragon flew at " + pace[0]);
+				helper.assertTrue(Math.abs(pace[1] / pace[0] - DragonRules.SPEED_BUFF) < 0.02, "the buffed dragon flew " + pace[1] / pace[0] + " times as fast");
 			})
 			.thenSucceed();
 	}
