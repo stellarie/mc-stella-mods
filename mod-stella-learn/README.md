@@ -46,7 +46,8 @@ needs `mod-stella-mobs` and suggests `mod-stella-spells`. The plan is `docs/plan
   hurt zombie against a healthy player. `PURSUE` is a healthy mob after a player at 35 percent health or less. In
   `FIGHT` or `PURSUE` the mob is not offered `SHIELD` or `BACK_OFF`, in any situation. In `RETREAT`, `KITE` and
   `NORMAL` it is offered them as before.
-- **Callouts.** A monster hurt by a player calls. Every monster within 16 blocks of the player is asked, idle or
+- **Callouts.** Off by default: the `callouts` key in `learn.json` is `false`, and then no monster calls another in. Formations
+  still form. With `callouts` set to `true`, a monster hurt by a player calls. Every monster within 16 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:
 
@@ -86,7 +87,8 @@ that makes no progress for 20 ticks, is dropped for 100 ticks and the mob's own 
 callout request is not walked. The goals that wait out a shield, take cover or hold outside a chokepoint share the rank
 of the walk and are asked first, but they do not cut a walk that is already under way short. The standoff goal of the mobs mod yields to a walking mob through the ObjectShare key `mod-stella-mobs:move-override`.
 
-**Shared sight.** A mob sees a player when it could target the player now. Every mob that sees such a mob within 32 blocks,
+**Shared sight.** Like the hurt callout, it runs only when `callouts` is `true`; with the default `false` no mob tells another
+where the player is. A mob sees a player when it could target the player now. Every mob that sees such a mob within 32 blocks,
 with a clear line, knows the player too, and so does every mob that sees one of those, down the chain. A mob that knows
 takes the player as its target when it has no live target of its own, and keeps the spot it was told
 (`SharedSight.seenSpot`). The telling is a callout of type `mod-stella-learn:sight`. It goes through
@@ -149,6 +151,7 @@ skipped, and a broken file gives every default.
 
 | Key | Default | Meaning |
 |---|---|---|
+| `callouts` | false | Whether monsters call each other in, by the hurt callout and by shared sight; formations form either way |
 | `callout_radius` | 24.0 | Blocks from the player within which mobs are asked |
 | `max_responders` | 4 | Mobs that may accept one call |
 | `callout_cooldown_ticks` | 100 | Rest between two calls from one caller |

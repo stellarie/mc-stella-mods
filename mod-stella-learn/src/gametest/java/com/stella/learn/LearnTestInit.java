@@ -55,6 +55,20 @@ public final class LearnTestInit implements ModInitializer {
 		});
 	}
 
+	/**
+	 * Runs `action` with callouts on, then puts the config back. The server thread runs the whole action before any other
+	 * test ticks, so a test that expects the default never sees the flag on.
+	 */
+	static void withCallouts(final Runnable action) {
+		LearnConfig previous = LearnConfigStore.get();
+		LearnConfigStore.set(previous.withCallouts(true));
+		try {
+			action.run();
+		} finally {
+			LearnConfigStore.set(previous);
+		}
+	}
+
 	static int loosedBy(final UUID shooter) {
 		AtomicInteger count = LOOSED.get(shooter);
 		return count == null ? 0 : count.get();

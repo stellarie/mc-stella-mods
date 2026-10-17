@@ -89,7 +89,7 @@ public class CalloutSenderGameTest {
 		Monster caller = zombie(helper, 20, 20);
 		Monster receiver = zombie(helper, 28, 20);
 		LearnArena.whenReady(helper, List.of(player, caller, receiver), () -> {
-			caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F);
+			LearnTestInit.withCallouts(() -> caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F));
 			int answers = LearnTestInit.answersTo(caller.getUUID());
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aMobHurtByAPlayerCalls RESULT answers={}", answers);
 			helper.assertTrue(answers > 0, "a mob hurt by a player called no one");
@@ -133,7 +133,7 @@ public class CalloutSenderGameTest {
 			long elapsed = helper.getTick() - began[0];
 			if (elapsed < fightTicks && elapsed % 10 == 0) {
 				caller.setInvulnerableTime(0);
-				caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 0.5F);
+				LearnTestInit.withCallouts(() -> caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 0.5F));
 			} else if (elapsed == fightTicks + 5L) {
 				int receivers = 3;
 				int calls = LearnTestInit.answersTo(caller.getUUID()) / receivers;

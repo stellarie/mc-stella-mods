@@ -32,6 +32,7 @@ public final class LearnConfigStore {
 			"behavior_log": %s,
 			"log_summary_ticks": %d,
 			"callout_fx": %s,
+			"callouts": %s,
 			"move_saturation": %s,
 			"move_threshold": %s,
 			"intercept_lead_ticks": %d,
@@ -50,7 +51,7 @@ public final class LearnConfigStore {
 		LearnConfig.DEFAULT_RETREAT_SATURATION, LearnConfig.DEFAULT_CHOKE_THRESHOLD, LearnConfig.DEFAULT_CHOKE_GROUP,
 		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS,
 		LearnConfig.DEFAULT_BEHAVIOR_LOG, LearnConfig.DEFAULT_LOG_SUMMARY_TICKS,
-		LearnConfig.DEFAULT_CALLOUT_FX, LearnConfig.DEFAULT_MOVE_SATURATION, LearnConfig.DEFAULT_MOVE_THRESHOLD,
+		LearnConfig.DEFAULT_CALLOUT_FX, LearnConfig.DEFAULT_CALLOUTS, LearnConfig.DEFAULT_MOVE_SATURATION, LearnConfig.DEFAULT_MOVE_THRESHOLD,
 		LearnConfig.DEFAULT_INTERCEPT_LEAD_TICKS, LearnConfig.DEFAULT_CRIT_SATURATION, LearnConfig.DEFAULT_CHARGE_TIGHTEN,
 		LearnConfig.DEFAULT_RL_ALPHA, LearnConfig.DEFAULT_RL_EPSILON, LearnConfig.DEFAULT_RL_WINDOW_TICKS
 	);
@@ -99,7 +100,7 @@ public final class LearnConfigStore {
 			+ " cover_threshold=" + LearnLog.num(c.coverThreshold()) + " retreat_saturation=" + LearnLog.num(c.retreatSaturation())
 			+ " choke_threshold=" + LearnLog.num(c.chokeThreshold()) + " choke_group=" + c.chokeGroup()
 			+ " choke_patience_ticks=" + c.chokePatienceTicks() + " behavior_log=" + c.behaviorLog()
-			+ " log_summary_ticks=" + c.logSummaryTicks() + " callout_fx=" + c.calloutFx() + " move_saturation=" + LearnLog.num(c.moveSaturation())
+			+ " log_summary_ticks=" + c.logSummaryTicks() + " callout_fx=" + c.calloutFx() + " callouts=" + c.callouts() + " move_saturation=" + LearnLog.num(c.moveSaturation())
 			+ " move_threshold=" + LearnLog.num(c.moveThreshold()) + " intercept_lead_ticks=" + c.interceptLeadTicks()
 			+ " crit_saturation=" + LearnLog.num(c.critSaturation()) + " charge_tighten=" + LearnLog.num(c.chargeTighten()) + " rl_alpha=" + LearnLog.num(c.rlAlpha())
 			+ " rl_epsilon=" + LearnLog.num(c.rlEpsilon()) + " rl_window_ticks=" + c.rlWindowTicks());
