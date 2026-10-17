@@ -33,9 +33,11 @@ The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 t
   - Every run has a rail column on each side, one lane outside it. A low wall climbs the column a step at a time, and a
     purpur pillar under it at steps 3, 7 and 11 holds it up. A wall or a doorway line takes the place of a rail where it
     already stands. A low wall also rings the hole where a run comes up through a slab.
-  - The flight of floor 1 stands in a closed shaft. Walls shut its run and its vestibule, three rows deep at its foot,
-    and the only doorway is in the high side wall of the vestibule. The plan draws floor 1 again until no cell of the run
-    can be seen from the gate or from the portal landing, the two ways a player comes into the castle.
+  - The flights of floors 1, 2 and 3 stand in closed shafts. Walls shut a run and its vestibule at its foot (two or three
+    rows deep), and the only doorway is in a side wall of the vestibule. The plan draws a floor again until no cell of its
+    flight can be seen from the way in. On floor 1 that is the gate and the portal landing. On floors 2, 3 and 5 it is the
+    top step and the landing of the arriving flight (for floor 5, the east flight of floor 4). The flights of floor 4 are
+    not hidden.
 - **Floors 1 to 3.** Rooms stand in a ring round a 12 by 12 courtyard. Floor 1 rooms have doorways to it. Floors 2 and 3
   have windows onto it. The courtyard is open air from the floor 1 ground to the floor 4 slab. It holds a fountain, grass,
   flowers and three trees. A world seed and a floor number fix the doorways and the optional merges of rooms.

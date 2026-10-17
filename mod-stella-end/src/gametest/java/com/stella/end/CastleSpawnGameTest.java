@@ -53,8 +53,8 @@ public class CastleSpawnGameTest {
 				}
 				int naturalInside = 0;
 				for (Entity entity : EndTestSupport.entities(end)) {
-					// A castle mob may walk in through a doorway; only a mob no floor spawned is a natural spawn.
-					naturalInside += entity instanceof Mob mob && !before.contains(entity.getUUID()) && EndMobs.floorOf(mob) == 0
+					// A castle mob, a mount included, may walk in through a doorway; only a mob of no castle side is a natural spawn.
+					naturalInside += entity instanceof Mob mob && !before.contains(entity.getUUID()) && !Factions.isCastle(mob)
 						&& (inCourtyard(entity.blockPosition()) || inRestArea(entity.blockPosition())) ? 1 : 0;
 				}
 				EndTestSupport.result("spawnPlay", "castleSpawns=" + EndGameTestInit.SPAWNS.size() + " spawnsInside=" + spawnsInside + " mobsInside=" + naturalInside);

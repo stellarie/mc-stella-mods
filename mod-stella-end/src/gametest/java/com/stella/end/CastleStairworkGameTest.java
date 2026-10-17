@@ -91,29 +91,36 @@ public class CastleStairworkGameTest {
 		return true;
 	}
 
-	@GameTest(environment = "mod-stella-end-test:stairwork_hidden_plan", maxTicks = 60)
-	public void noCellOfTheFirstFlightShowsFromTheGateOrThePortalLandingForEverySeed(final GameTestHelper helper) {
+	/** The floors whose way up must stay out of sight of the way in: the entrance floor, and the floors entered by a flight 1, 2 and 4 climb. */
+	private static final int[] WATCHED = {1, 2, 3, 5};
+
+	@GameTest(environment = "mod-stella-end-test:stairwork_hidden_plan", maxTicks = 100)
+	public void noCellOfTheNextFlightShowsFromTheGateThePortalLandingOrAnArrivingFlightForEverySeed(final GameTestHelper helper) {
 		StringBuilder bad = new StringBuilder();
 		int seeds = 300;
 		int looks = 0;
 		for (long seed = 0; seed < seeds; seed++) {
-			CastleLayout.FloorPlan plan = CastleLayout.generate(seed).floor(1);
-			for (double[] from : CastleLayout.entrances()) {
-				for (CastleLayout.Flight flight : plan.ups()) {
-					looks++;
-					if (CastleLayout.shows(plan, flight, from[0], from[1])) {
-						bad.append(" seed ").append(seed).append(" shows from ").append(from[0]).append(',').append(from[1]);
+			CastleLayout layout = CastleLayout.generate(seed);
+			for (int floor : WATCHED) {
+				CastleLayout.FloorPlan plan = layout.floor(floor);
+				for (double[] from : CastleLayout.entrances(plan)) {
+					for (CastleLayout.Flight flight : plan.ups()) {
+						looks++;
+						if (CastleLayout.shows(plan, flight, from[0], from[1])) {
+							bad.append(" seed ").append(seed).append(" floor ").append(floor).append(" shows from ").append(from[0]).append(',').append(from[1]);
+						}
 					}
 				}
 			}
 		}
 		EndTestSupport.result("stairworkHiddenPlan", "seeds=" + seeds + " looks=" + looks + " bad=" + bad.length());
-		helper.assertTrue(bad.isEmpty(), "the first flight shows:" + bad);
+		helper.assertTrue(looks > 0, "nothing was looked at");
+		helper.assertTrue(bad.isEmpty(), "a flight shows:" + bad);
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mod-stella-end-test:stairwork_hidden_built", maxTicks = 80)
-	public void noStepOfTheFirstFlightIsInSightFromTheGateOrThePortalLandingInTheBuiltCastles(final GameTestHelper helper) {
+	@GameTest(environment = "mod-stella-end-test:stairwork_hidden_built", maxTicks = 120)
+	public void noStepOfTheNextFlightIsInSightFromTheWayInOrTheTopOfTheArrivingFlightInTheBuiltCastles(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		CastleLayout other = CastleBuildGameTest.other(helper);
 		StringBuilder bad = new StringBuilder();
@@ -122,16 +129,20 @@ public class CastleStairworkGameTest {
 		for (int castle = 0; castle < 2; castle++) {
 			CastleLayout layout = castle == 0 ? EndCastles.layout(end) : other;
 			BlockPos min = castle == 0 ? EndCastle.min() : CastleBuildGameTest.OTHER_MIN;
-			for (double[] from : CastleLayout.entrances()) {
-				Vec3 eye = new Vec3(min.getX() + from[0], EndCastle.standY(1) + EYE, min.getZ() + from[1]);
-				for (CastleLayout.Flight flight : layout.floor(1).ups()) {
-					for (int k = 0; k < CastleLayout.Flight.STEPS; k++) {
-						for (int lane = 0; lane < CastleLayout.Flight.WIDTH; lane++) {
-							Vec3 step = new Vec3(min.getX() + flight.x(k, lane) + 0.5, EndCastle.slabY(1) + 2 + k, min.getZ() + flight.z(k, lane) + 0.5);
-							looks++;
-							if (sees(end, eye, step)) {
-								clear++;
-								bad.append(" castle ").append(castle).append(" from ").append(from[0]).append(',').append(from[1]).append(" sees step ").append(k).append(" lane ").append(lane);
+			for (int floor : WATCHED) {
+				CastleLayout.FloorPlan plan = layout.floor(floor);
+				for (double[] from : CastleLayout.entrances(plan)) {
+					Vec3 eye = new Vec3(min.getX() + from[0], EndCastle.standY(floor) + EYE, min.getZ() + from[1]);
+					for (CastleLayout.Flight flight : plan.ups()) {
+						for (int k = 0; k < CastleLayout.Flight.STEPS; k++) {
+							for (int lane = 0; lane < CastleLayout.Flight.WIDTH; lane++) {
+								Vec3 step = new Vec3(min.getX() + flight.x(k, lane) + 0.5, EndCastle.slabY(floor) + 2 + k, min.getZ() + flight.z(k, lane) + 0.5);
+								looks++;
+								if (sees(end, eye, step)) {
+									clear++;
+									bad.append(" castle ").append(castle).append(" floor ").append(floor).append(" from ").append(from[0]).append(',').append(from[1])
+										.append(" sees step ").append(k).append(" lane ").append(lane);
+								}
 							}
 						}
 					}
