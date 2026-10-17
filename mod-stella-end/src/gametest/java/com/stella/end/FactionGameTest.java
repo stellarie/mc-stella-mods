@@ -34,16 +34,14 @@ public class FactionGameTest {
 		found.add(new Cast("dragon side skeleton", side));
 		found.add(new Cast("sovereign", UndeadSovereign.spawn(end, false)));
 		List<net.minecraft.world.entity.monster.skeleton.WitherSkeleton> knights = WitherKnights.raise(end);
-		// The equips mod's Deflection turns a share of blows away, a hurt-by check included, and a knight wears six random enchantments a piece.
-		// This test is about sides, so the knight stands in plain gear.
-		for (net.minecraft.world.entity.monster.skeleton.WitherSkeleton knight : knights) {
-			for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
-				knight.getItemBySlot(slot).remove(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
-			}
-		}
 		found.add(new Cast("wither knight", knights.isEmpty() ? null : knights.get(0)));
 		for (Cast one : found) {
 			helper.assertTrue(one.mob() != null && one.mob().isAlive(), one.name() + " was not made");
+			// The equips mod's Deflection turns a share of blows away, a hurt-by check included. The castle skeletons and the
+			// knights wear random enchantments, and this test is about sides, so every one stands in plain gear.
+			for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+				one.mob().getItemBySlot(slot).remove(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+			}
 		}
 		return found;
 	}
