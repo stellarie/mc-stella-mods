@@ -159,7 +159,7 @@
   "item.mod-stella-equips-enchants.slime_heart": "Slime Heart",
   "item.mod-stella-equips-enchants.refine_catalyst": "Refine Catalyst",
   "item.mod-stella-equips-enchants.refine_catalyst.requires": "refine from +7 up",
-  "item.mod-stella-equips-enchants.refine_catalyst.desc": "Keep it in your inventory. A failed refine spends one and keeps the level.",
+  "item.mod-stella-equips-enchants.refine_catalyst.desc": "Keep it in your inventory. A failure that would lower the level spends one.",
   "death.attack.mod-stella-equips-enchants.slime_heart": "%1$s was worn down by their slime heart",
   "item.mod-stella-equips-enchants.emerald_bag.count": "Emeralds: %s",
   "screen.mod-stella-equips-enchants.emerald_bag.stored": "In bag: %s",

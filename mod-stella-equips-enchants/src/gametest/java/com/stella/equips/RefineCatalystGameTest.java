@@ -21,15 +21,15 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 
-/** The Refine Catalyst: a failed refine from +7 keeps its level and spends one; deep ore drops it. */
+/** The Refine Catalyst: a failed refine from +7 that would lower the level keeps it and spends one; deep ore drops it. */
 public final class RefineCatalystGameTest {
 	@GameTest
 	public void failedRefineKeepsTheLevelAndSpendsACatalyst(final GameTestHelper helper) {
-		// +8 fails and keeps its level, a catalyst spent.
+		// +8 keeps its level on a failure anyway, so the catalyst is not spent.
 		Attempt eight = refine(helper, 8, 1, false);
 		StellaEquips.LOGGER.info("[BEHAVIOR] test=refineCatalyst RESULT from=8 result={} level={} catalysts={}", eight.result, eight.level, eight.catalysts);
 		helper.assertTrue(eight.result == RefineStation.Result.FAILURE && eight.level == 8, "a failed +8 refine left +" + eight.level);
-		helper.assertTrue(eight.catalysts == 0, "the +8 failure left " + eight.catalysts + " catalysts");
+		helper.assertTrue(eight.catalysts == 1, "the +8 failure left " + eight.catalysts + " catalysts, not 1");
 		// +11 loses a level on a failure, so the catalyst is the only thing that holds it.
 		Attempt held = refine(helper, 11, 1, false);
 		Attempt bare = refine(helper, 11, 0, false);
