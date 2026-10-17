@@ -336,6 +336,12 @@ public class DragonPolishGameTest {
 	}
 
 	/** Sends the dragon to its perch by skipping the clock to the moment it is due, and waits for the perch. */
+	/** A perch starts only while the dragon is awake. A roof sighting far ahead keeps it awake without a player there. */
+	static void awake(final DragonRoostGameTest.Fight fight) {
+		fight.state().mode = DragonState.Mode.AWAKE;
+		fight.state().lastRoofSeen = Long.MAX_VALUE / 2;
+	}
+
 	static void toPerch(final GameTestHelper helper, final DragonRoostGameTest.Fight fight) {
 		EndClock.advance(fight.end(), fight.state().perchAt() - EndClock.now(fight.end()) + 1);
 	}
@@ -343,6 +349,7 @@ public class DragonPolishGameTest {
 	@GameTest(environment = "mod-stella-end-test:perch_cycle", maxTicks = 500)
 	public void everySixHundredToNineHundredTicksTheDragonLandsOnThePortalForTwoHundredTicksTakingNormalDamageWhileBreathCloudsRain(final GameTestHelper helper) {
 		DragonRoostGameTest.Fight fight = DragonRoostGameTest.fight(helper);
+		awake(fight);
 		DragonState state = fight.state();
 		ServerLevel end = fight.end();
 		float[] taken = new float[2];
@@ -462,6 +469,7 @@ public class DragonPolishGameTest {
 	@GameTest(environment = "mod-stella-end-test:perch_sleep", maxTicks = 300)
 	public void aSleepThatBeginsOnAPerchTakesAQuarterOfTheDamageAndNotLess(final GameTestHelper helper) {
 		DragonRoostGameTest.Fight fight = DragonRoostGameTest.fight(helper);
+		awake(fight);
 		DragonState state = fight.state();
 		float[] taken = new float[2];
 		helper.startSequence()

@@ -12,7 +12,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The perch: every 600 to 900 ticks the dragon lands on the portal for 200 ticks and rains breath clouds over the deck.
- * It takes normal damage there. The timer runs while the dragon is passive or awake, and stands still during a roost.
+ * It takes normal damage there. The timer runs while the dragon is awake or passive, but a perch starts only while it is awake. It stands still during a roost.
  */
 final class DragonPerch {
 	/** The dragon has touched down within this many blocks of the portal point. */

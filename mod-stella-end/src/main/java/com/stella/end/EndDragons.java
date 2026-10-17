@@ -236,7 +236,7 @@ public final class EndDragons {
 				DragonPerch.finish(state, now, end.getRandom());
 				switchTo(state, roofEmpty ? DragonState.Mode.PASSIVE : DragonState.Mode.AWAKE, now);
 			}
-		} else if (DragonPerch.due(state, now)) {
+		} else if (state.mode == DragonState.Mode.AWAKE && DragonPerch.due(state, now)) {
 			DragonPerch.begin(state, now);
 		} else if (!roofEmpty && state.mode == DragonState.Mode.PASSIVE) {
 			switchTo(state, DragonState.Mode.AWAKE, now);
