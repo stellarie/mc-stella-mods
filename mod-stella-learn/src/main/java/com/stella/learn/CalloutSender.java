@@ -32,10 +32,13 @@ public final class CalloutSender {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(CalloutSender::afterDamage);
 	}
 
+	static final float LOW_HEALTH_CALL = 0.25F;
+
 	static void afterDamage(
 		final LivingEntity entity, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked
 	) {
-		if (!LearnConfigStore.get().callouts()) {
+		// With callouts off, only a mob near death still calls.
+		if (!LearnConfigStore.get().callouts() && entity.getHealth() > entity.getMaxHealth() * LOW_HEALTH_CALL) {
 			return;
 		}
 
