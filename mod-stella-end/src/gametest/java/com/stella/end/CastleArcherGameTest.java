@@ -114,6 +114,9 @@ public class CastleArcherGameTest {
 		helper.assertTrue(at != null, "no spawn cell of floor " + floor + " sees the player from 10 to 16 blocks");
 		Skeleton archer = (Skeleton) EndMobs.spawn(end, floor, EndMobs.Kind.ARCHER, at);
 		ArcherVolleyGoal volley = CastleTeleportGameTest.goal(archer, ArcherVolleyGoal.class);
+		// The floor spawner fills the floor while the player stands there, and a stray arrow or a neighbour can hurt the archer.
+		// A hurt archer blinks away and loses sight, which is another behaviour from the one this test measures.
+		archer.setPermanentlyInvulnerable(true);
 		helper.onEachTick(() -> archer.setTarget(player));
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(volley.volleys().size() == 1, "no first volley yet"))
