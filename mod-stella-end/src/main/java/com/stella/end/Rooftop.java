@@ -3,6 +3,7 @@ package com.stella.end;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -22,10 +23,9 @@ public final class Rooftop {
 	private Rooftop() {
 	}
 
-	/** Whether a point lies over the deck's footprint, from the deck up to the ceiling. */
+	/** Whether a point lies over the deck's disc, 46 blocks across and centred on the End origin, from the deck up to the ceiling. */
 	public static boolean contains(final double x, final double y, final double z) {
-		return x >= EndCastle.MIN_X && x < EndCastle.MIN_X + EndCastle.SIZE && z >= EndCastle.MIN_Z && z < EndCastle.MIN_Z + EndCastle.SIZE
-			&& y >= DECK_Y + 0.5 && y <= DECK_Y + CEILING;
+		return EndCastle.inDisc(Mth.floor(x), Mth.floor(z)) && y >= DECK_Y + 0.5 && y <= DECK_Y + CEILING;
 	}
 
 	/** The players the dragon fights: alive, in survival or adventure, and on the rooftop. */

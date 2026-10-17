@@ -1,20 +1,26 @@
 package com.stella.end;
 
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.pathfinder.Path;
 
-/** The castle as blocks in the End: the floors, walls, rooms, doorways and stairs a player walks, read back from the level. */
+/** The castle as blocks in the End: the floors, walls, rooms, doorways, stairs and crown a player walks, read back from the level. */
 public class CastleBuildGameTest {
 	/** A second castle under another seed, built far from the real one, so each gate run builds at least once. */
 	static final BlockPos OTHER_MIN = new BlockPos(1024, EndCastle.BASE_Y, 1024);
@@ -32,39 +38,32 @@ public class CastleBuildGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:build_floors", maxTicks = 20)
-	public void sixFloorsStandInAThirtyTwoByThirtyTwoByHeightSixteenFootprint(final GameTestHelper helper) {
+	public void everyWallOfEveryFloorStandsWholeAndOnlyStairsAndTheCourtyardOpenASlab(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
+		CastleLayout layout = EndCastles.layout(end);
 		BlockPos min = EndCastle.min();
 		StringBuilder bad = new StringBuilder();
 		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
+			CastleLayout.FloorPlan plan = layout.floor(floor);
 			int slab = EndCastle.slabY(floor);
 			int holes = 0;
+			int voids = 0;
 			for (int x = 0; x < EndCastle.SIZE; x++) {
 				for (int z = 0; z < EndCastle.SIZE; z++) {
 					holes += EndTestSupport.state(end, min, x, slab, z).isAir() ? 1 : 0;
-					boolean edge = x == 0 || z == 0 || x == EndCastle.SIZE - 1 || z == EndCastle.SIZE - 1;
-					for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
-						boolean wall = !EndTestSupport.state(end, min, x, y, z).isAir();
-						if (edge && !wall) {
-							bad.append(" floor ").append(floor).append(" wall open at ").append(x).append(',').append(y).append(',').append(z);
+					voids += plan.kind(x, z) == CastleLayout.VOID ? 1 : 0;
+					if (plan.kind(x, z) == CastleLayout.WALL) {
+						for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
+							if (EndTestSupport.state(end, min, x, y, z).isAir()) {
+								bad.append(" floor ").append(floor).append(" wall open at ").append(x).append(',').append(y).append(',').append(z);
+								break;
+							}
 						}
-					}
-					if (x == 0 && !EndTestSupport.state(end, min, -1, slab + 2, z).isAir()) {
-						bad.append(" floor ").append(floor).append(" spills west at z ").append(z);
-					}
-					if (z == 0 && !EndTestSupport.state(end, min, x, slab + 2, -1).isAir()) {
-						bad.append(" floor ").append(floor).append(" spills north at x ").append(x);
-					}
-					if (x == EndCastle.SIZE - 1 && !EndTestSupport.state(end, min, EndCastle.SIZE, slab + 2, z).isAir()) {
-						bad.append(" floor ").append(floor).append(" spills east at z ").append(z);
-					}
-					if (z == EndCastle.SIZE - 1 && !EndTestSupport.state(end, min, x, slab + 2, EndCastle.SIZE).isAir()) {
-						bad.append(" floor ").append(floor).append(" spills south at x ").append(x);
 					}
 				}
 			}
-			// Only the stairwell from below opens a slab.
-			int expected = floor == 1 ? 0 : CastleLayout.Shaft.CEILING_HOLES;
+			// Only the courtyard and the climb of a stair from below open a slab.
+			int expected = voids + plan.arrivals().size() * (CastleLayout.Flight.STEPS - 1 - CastleLayout.Flight.HOLE_FROM) * CastleLayout.Flight.WIDTH;
 			if (holes != expected) {
 				bad.append(" floor ").append(floor).append(" slab has ").append(holes).append(" open cells, expected ").append(expected);
 			}
@@ -74,127 +73,133 @@ public class CastleBuildGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mod-stella-end-test:build_rooms", maxTicks = 20)
-	public void everyFloorHoldsAtLeastFourRoomsInTheWorld(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		StringBuilder bad = new StringBuilder();
-		StringBuilder counts = new StringBuilder();
-		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
-			// Above a doorway's lintel only walls divide a floor, so the open cells of this layer fall into its rooms.
-			int rooms = components(end, EndCastle.min(), EndCastle.slabY(floor) + CastleLayout.DOOR_HEIGHT + 4, false, 0);
-			counts.append(' ').append(rooms);
-			if (rooms < 4) {
-				bad.append(" floor ").append(floor).append(" holds ").append(rooms);
-			}
-		}
-		EndTestSupport.result("buildRooms", "roomsPerFloor=" + counts);
-		helper.assertTrue(bad.isEmpty(), "floors with too few rooms:" + bad);
-		helper.succeed();
-	}
-
-	@GameTest(environment = "mod-stella-end-test:build_connected", maxTicks = 20)
-	public void theRoomsOfEveryFloorJoinThroughDoorwaysInTheWorld(final GameTestHelper helper) {
+	@GameTest(environment = "mod-stella-end-test:build_stairs", maxTicks = 20)
+	public void everyFlightIsSixteenStepsOfThreeLanesWithHeadroomAndEndsLevelWithTheFloorAbove(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		CastleLayout layout = EndCastles.layout(end);
 		StringBuilder bad = new StringBuilder();
-		// The barrier door cuts the exit chamber off floor 6 until a later rule opens it.
+		int flights = 0;
 		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
-			int pieces = components(end, EndCastle.min(), EndCastle.standY(floor), true, floor);
-			int expected = floor == EndCastle.FLOORS ? 2 : 1;
-			if (pieces != expected) {
-				bad.append(" floor ").append(floor).append(" falls into ").append(pieces).append(" pieces, expected ").append(expected);
+			for (CastleLayout.Flight flight : layout.floor(floor).ups()) {
+				flights++;
+				checkFlight(end, EndCastle.min(), flight, EndCastle.slabY(floor), "floor " + floor, bad);
 			}
 		}
-		int whole;
-		try {
-			CastleBuilder.setExitDoor(end, layout, EndCastle.min(), true);
-			whole = components(end, EndCastle.min(), EndCastle.standY(EndCastle.FLOORS), true, EndCastle.FLOORS);
-		} finally {
-			CastleBuilder.setExitDoor(end, layout, EndCastle.min(), false);
-		}
-		if (whole != 1) {
-			bad.append(" floor 6 with its door open falls into ").append(whole).append(" pieces");
-		}
-		EndTestSupport.result("buildConnected", "bad=" + bad.length() + " floor6DoorOpen=" + whole);
-		helper.assertTrue(bad.isEmpty(), "unjoined floors:" + bad);
-		helper.succeed();
-	}
-
-	@GameTest(environment = "mod-stella-end-test:build_stairs", maxTicks = 20)
-	public void aSpiralStairClimbsFromEveryFloorToTheNext(final GameTestHelper helper) {
-		ServerLevel end = EndTestSupport.fresh(helper);
-		BlockPos min = EndCastle.min();
-		StringBuilder bad = new StringBuilder();
-		for (int floor = 1; floor <= EndCastle.FLOORS - 1; floor++) {
-			CastleLayout.Shaft shaft = EndCastles.layout(end).floor(floor).up();
-			for (int k = 0; k < CastleLayout.Shaft.STEPS; k++) {
-				int y = EndCastle.slabY(floor) + 1 + k;
-				BlockState step = EndTestSupport.state(end, min, shaft.stepX(k), y, shaft.stepZ(k));
-				if (!(step.getBlock() instanceof StairBlock) || step.getValue(StairBlock.FACING) != shaft.stepFacing(k) || step.getValue(StairBlock.HALF) != Half.BOTTOM) {
-					bad.append(" floor ").append(floor).append(" step ").append(k).append(" is ").append(step);
-				}
-				// A climber on the step stands in the two layers above its block.
-				for (int head = 1; head <= 2; head++) {
-					if (!end.getBlockState(EndTestSupport.world(min, shaft.stepX(k), y + head, shaft.stepZ(k))).isAir()) {
-						bad.append(" floor ").append(floor).append(" step ").append(k).append(" has no headroom at +").append(head);
-					}
-				}
-			}
-			// The top step ends level with the next floor's standing surface.
-			BlockState top = EndTestSupport.state(end, min, shaft.topX(), EndCastle.slabY(floor + 1), shaft.topZ());
-			if (top.isAir()) {
-				bad.append(" floor ").append(floor).append(" has no deck at the top");
-			}
-		}
-		EndTestSupport.result("buildStairs", "floors=" + (EndCastle.FLOORS - 1) + " bad=" + bad.length());
+		checkFlight(end, EndCastle.min(), layout.rest().exit(), EndCastle.REST_Y, "rest exit", bad);
+		EndTestSupport.result("buildStairs", "flights=" + flights + " bad=" + bad.length());
+		helper.assertTrue(flights == 9, "the plan holds " + flights + " flights, expected 8 between floors and 1 behind the arena door");
 		helper.assertTrue(bad.isEmpty(), "stairs that do not climb:" + bad);
 		helper.succeed();
 	}
 
+	/** Every step of a flight is a stair block that faces the way up, with room for the feet and head above it. */
+	static void checkFlight(final ServerLevel end, final BlockPos min, final CastleLayout.Flight flight, final int slab, final String name, final StringBuilder bad) {
+		for (int k = 0; k < CastleLayout.Flight.STEPS; k++) {
+			for (int lane = 0; lane < CastleLayout.Flight.WIDTH; lane++) {
+				int x = flight.x(k, lane);
+				int z = flight.z(k, lane);
+				int y = slab + 1 + k;
+				BlockState step = EndTestSupport.state(end, min, x, y, z);
+				if (!(step.getBlock() instanceof StairBlock) || step.getValue(StairBlock.FACING) != flight.direction() || step.getValue(StairBlock.HALF) != Half.BOTTOM) {
+					bad.append(' ').append(name).append(" step ").append(k).append(" lane ").append(lane).append(" is ").append(step);
+				}
+				if (k < CastleLayout.Flight.STEPS - 1) {
+					for (int head = 1; head <= 2; head++) {
+						if (!EndTestSupport.state(end, min, x, y + head, z).isAir()) {
+							bad.append(' ').append(name).append(" step ").append(k).append(" lane ").append(lane).append(" has no headroom at +").append(head);
+						}
+					}
+				}
+			}
+		}
+		// Beside the run on both sides, a stair block of the same flight would make it wider than three.
+		int lastX = flight.x(CastleLayout.Flight.STEPS - 1, 1);
+		int lastZ = flight.z(CastleLayout.Flight.STEPS - 1, 1);
+		Direction across = flight.direction().getClockWise();
+		for (int side : new int[] {-2, 2}) {
+			BlockState beside = EndTestSupport.state(end, min, lastX + across.getStepX() * side, slab + CastleLayout.Flight.STEPS, lastZ + across.getStepZ() * side);
+			if (beside.getBlock() instanceof StairBlock && beside.getValue(StairBlock.FACING) == flight.direction() && beside.is(Blocks.PURPUR_STAIRS)) {
+				bad.append(' ').append(name).append(" is wider than three lanes");
+			}
+		}
+	}
+
 	@GameTest(environment = "mod-stella-end-test:build_walk", maxTicks = 200)
-	public void aWalkerFindsAPathFromEveryFloorToTheNextOverTheStairs(final GameTestHelper helper) {
+	public void aZombieFindsAPathUpEveryFlightToTheFloorAbove(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		CastleLayout layout = EndCastles.layout(end);
-		net.minecraft.world.entity.monster.zombie.Zombie[] walkers = new net.minecraft.world.entity.monster.zombie.Zombie[EndCastle.FLOORS];
+		List<Zombie> walkers = new ArrayList<>();
+		List<BlockPos> goals = new ArrayList<>();
+		List<String> names = new ArrayList<>();
 		helper.startSequence()
 			.thenExecute(() -> {
 				for (int floor = 1; floor <= EndCastle.FLOORS - 1; floor++) {
-					// Beside the first step: a zombie's search reaches 35 blocks, and the far corner is farther.
-					CastleLayout.Shaft up = layout.floor(floor).up();
-					BlockPos at = EndTestSupport.world(EndCastle.min(), up.stepX(0) - 1, EndCastle.standY(floor), up.stepZ(0));
-					net.minecraft.world.entity.monster.zombie.Zombie walker =
-						net.minecraft.world.entity.EntityTypes.ZOMBIE.create(end, net.minecraft.world.entity.EntitySpawnReason.MOB_SUMMONED);
-					// Claimed, so no other mod's spawn roll turns it elite, boss or baby: a big one cannot take a one-block stair.
-					LevelBridge.claim(walker);
-					walker.addTag(EndMobs.FLOOR_TAG + "0");
-					walker.snapTo(at.getX() + 0.5, at.getY() + 2, at.getZ() + 0.5, 0.0F, 0.0F);
-					walker.setPersistenceRequired();
-					helper.assertTrue(end.addFreshEntity(walker), "the walker was refused on floor " + floor);
-					walkers[floor - 1] = walker;
+					for (CastleLayout.Flight flight : layout.floor(floor).ups()) {
+						BlockPos foot = EndTestSupport.world(EndCastle.min(), flight.x(-1, 1), EndCastle.standY(floor), flight.z(-1, 1));
+						Zombie walker = EntityTypes.ZOMBIE.create(end, EntitySpawnReason.MOB_SUMMONED);
+						// Claimed, so no other mod's spawn roll turns it elite, boss or baby: a big one cannot take a one-block stair.
+						LevelBridge.claim(walker);
+						walker.addTag(EndMobs.FLOOR_TAG + "0");
+						walker.snapTo(foot.getX() + 0.5, foot.getY() + 2, foot.getZ() + 0.5, 0.0F, 0.0F);
+						walker.setPersistenceRequired();
+						helper.assertTrue(end.addFreshEntity(walker), "the walker was refused on floor " + floor);
+						walkers.add(walker);
+						goals.add(EndTestSupport.world(EndCastle.min(), flight.x(CastleLayout.Flight.STEPS, 1), EndCastle.standY(floor + 1), flight.z(CastleLayout.Flight.STEPS, 1)));
+						names.add("floor " + floor + " " + flight.direction());
+					}
 				}
 			})
 			.thenWaitUntil(() -> {
-				for (int floor = 1; floor <= EndCastle.FLOORS - 1; floor++) {
-					helper.assertTrue(walkers[floor - 1].onGround(), "the walker of floor " + floor + " is not standing yet");
+				for (int i = 0; i < walkers.size(); i++) {
+					helper.assertTrue(walkers.get(i).onGround(), "the walker of " + names.get(i) + " is not standing yet");
 				}
 			})
 			.thenExecute(() -> {
 				StringBuilder bad = new StringBuilder();
-				for (int floor = 1; floor <= EndCastle.FLOORS - 1; floor++) {
-					CastleLayout.FloorPlan above = layout.floor(floor + 1);
-					BlockPos goal = EndTestSupport.world(EndCastle.min(), above.landingX(), EndCastle.standY(floor + 1), above.landingZ());
-					net.minecraft.world.level.pathfinder.Path path = walkers[floor - 1].getNavigation().createPath(goal, 1);
+				for (int i = 0; i < walkers.size(); i++) {
+					Path path = walkers.get(i).getNavigation().createPath(goals.get(i), 1);
 					boolean reaches = path != null && path.canReach();
-					EndTestSupport.result("buildWalk", "floor=" + floor + " reaches=" + reaches + " nodes=" + (path == null ? -1 : path.getNodeCount())
-						+ " from=" + walkers[floor - 1].blockPosition() + " goal=" + goal + " end=" + (path == null ? null : path.getEndNode()));
+					EndTestSupport.result("buildWalk", names.get(i) + " reaches=" + reaches + " nodes=" + (path == null ? -1 : path.getNodeCount()) + " from=" + walkers.get(i).blockPosition()
+						+ " goal=" + goals.get(i) + " end=" + (path == null ? null : path.getEndNode()));
 					if (!reaches) {
-						bad.append(" floor ").append(floor).append(" has no path up");
+						bad.append(' ').append(names.get(i)).append(" has no path up");
 					}
-					walkers[floor - 1].discard();
+					walkers.get(i).discard();
 				}
-				helper.assertTrue(bad.isEmpty(), "floors a walker cannot climb:" + bad);
+				helper.assertTrue(walkers.size() == 8, "the walkers number " + walkers.size());
+				helper.assertTrue(bad.isEmpty(), "flights a walker cannot climb:" + bad);
 			})
 			.thenSucceed();
+	}
+
+	@GameTest(environment = "mod-stella-end-test:build_connected", maxTicks = 40)
+	public void theArenaDoorSealsTheStairToTheRestRoomUntilItOpensAndTheHatchLeadsToTheRoof(final GameTestHelper helper) {
+		ServerLevel end = EndTestSupport.fresh(helper);
+		CastleLayout layout = EndCastles.layout(end);
+		CastleLayout.FloorPlan arena = layout.floor(EndCastle.FLOORS);
+		BlockPos landing = EndTestSupport.world(EndCastle.min(), arena.landingX(), EndCastle.standY(EndCastle.FLOORS), arena.landingZ());
+		CastleLayout.Flight apse = CastleLayout.APSE;
+		BlockPos foot = EndTestSupport.world(EndCastle.min(), apse.x(-1, 1), EndCastle.standY(EndCastle.FLOORS), apse.z(-1, 1));
+		CastleLayout.Flight exit = layout.rest().exit();
+		BlockPos hatch = EndTestSupport.world(EndCastle.min(), exit.x(CastleLayout.Flight.STEPS, 1), EndCastle.ROOF_Y + 1, exit.z(CastleLayout.Flight.STEPS, 1));
+		boolean shutFoot = CastleWalk.reaches(CastleWalk.reach(end, landing), foot.getX(), foot.getY(), foot.getZ());
+		boolean shutRoof;
+		boolean openFoot;
+		boolean openRoof;
+		try {
+			shutRoof = CastleWalk.reaches(CastleWalk.reach(end, landing), hatch.getX(), hatch.getY(), hatch.getZ());
+			CastleBuilder.setExitDoor(end, layout, EndCastle.min(), true);
+			Set<Long> opened = CastleWalk.reach(end, landing);
+			openFoot = CastleWalk.reaches(opened, foot.getX(), foot.getY(), foot.getZ());
+			openRoof = CastleWalk.reaches(opened, hatch.getX(), hatch.getY(), hatch.getZ());
+		} finally {
+			CastleBuilder.setExitDoor(end, layout, EndCastle.min(), false);
+		}
+		EndTestSupport.result("buildConnected", "shutFoot=" + shutFoot + " shutRoof=" + shutRoof + " openFoot=" + openFoot + " openRoof=" + openRoof);
+		helper.assertTrue(!shutFoot && !shutRoof, "a walker passes the shut door: foot=" + shutFoot + " roof=" + shutRoof);
+		helper.assertTrue(openFoot, "the open door does not lead to the foot of the stair at " + foot);
+		helper.assertTrue(openRoof, "the stair behind the open door does not lead to the roof at " + hatch);
+		helper.succeed();
 	}
 
 	@GameTest(environment = "mod-stella-end-test:build_arena", maxTicks = 20)
@@ -206,7 +211,7 @@ public class CastleBuildGameTest {
 			for (int dz = -3; dz <= 3; dz++) {
 				BlockPos feet = anchor.offset(dx, 0, dz);
 				boolean clear = end.getBlockState(feet).isAir() && end.getBlockState(feet.above()).isAir() && end.getBlockState(feet.above(2)).isAir();
-				if (!clear || !end.getBlockState(feet.below()).isFaceSturdy(end, feet.below(), net.minecraft.core.Direction.UP)) {
+				if (!clear || !end.getBlockState(feet.below()).isFaceSturdy(end, feet.below(), Direction.UP)) {
 					bad.append(" blocked at ").append(feet);
 				}
 			}
@@ -221,7 +226,7 @@ public class CastleBuildGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-end-test:build_top", maxTicks = 20)
-	public void aRestAreaAndARooftopCrownTheSixFloors(final GameTestHelper helper) {
+	public void aRestRoomSixTallAndARooftopDiscFortySixAcrossCrownTheSixFloors(final GameTestHelper helper) {
 		// The second castle: vanilla carves the exit portal pit into the real deck once the dragon fight starts.
 		ServerLevel end = EndTestSupport.fresh(helper);
 		CastleLayout layout = other(helper);
@@ -229,7 +234,7 @@ public class CastleBuildGameTest {
 		CastleLayout.RestPlan rest = layout.rest();
 		StringBuilder bad = new StringBuilder();
 		int standing = EndCastle.REST_Y + 1;
-		if (!EndTestSupport.state(end, min, rest.chestX(), standing, rest.chestZ()).is(Blocks.ENDER_CHEST)) {
+		if (!EndTestSupport.state(end, min, rest.enderX(), standing, rest.enderZ()).is(Blocks.ENDER_CHEST)) {
 			bad.append(" no ender chest");
 		}
 		if (!EndTestSupport.state(end, min, rest.tableX(), standing, rest.tableZ()).is(Blocks.CRAFTING_TABLE)) {
@@ -238,29 +243,96 @@ public class CastleBuildGameTest {
 		if (!EndTestSupport.state(end, min, rest.anvilX(), standing, rest.anvilZ()).is(Blocks.ANVIL)) {
 			bad.append(" no anvil");
 		}
-		if (!EndTestSupport.state(end, min, rest.bedX(), standing, rest.bedZ()).is(net.minecraft.tags.BlockTags.BEDS)) {
-			bad.append(" no bed");
-		}
-		// The rest room is 12 by 12 with walls: a wall at its far edge, air inside, and nothing of it past that.
-		if (EndTestSupport.state(end, min, EndCastle.REST_SIZE - 1, standing + 2, 5).isAir()
-			|| !EndTestSupport.state(end, min, EndCastle.REST_SIZE - 2, standing + 2, 5).isAir()) {
-			bad.append(" rest room is not 12 wide");
-		}
-		int deck = 0;
-		for (int x = 0; x < EndCastle.SIZE; x++) {
-			for (int z = 0; z < EndCastle.SIZE; z++) {
-				deck += EndTestSupport.state(end, min, x, EndCastle.ROOF_Y, z).isAir() ? 0 : 1;
+		for (int i = 0; i < rest.chestCount(); i++) {
+			BlockState chest = EndTestSupport.state(end, min, rest.chestX() + i, standing, rest.chestZ());
+			if (!chest.is(Blocks.CHEST) || end.getBlockEntity(EndTestSupport.world(min, rest.chestX() + i, standing, rest.chestZ())) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity entity
+				&& (entity.getLootTable() != null || !entity.isEmpty())) {
+				bad.append(" chest ").append(i).append(" is not an empty chest");
 			}
 		}
-		// The deck is the whole footprint but the cells its stairwell opens.
-		if (deck != EndCastle.SIZE * EndCastle.SIZE - CastleLayout.Shaft.CEILING_HOLES) {
-			bad.append(" deck has ").append(deck).append(" cells");
+		CastleLayout.Rect room = rest.room();
+		for (int x = room.x0(); x <= room.x1(); x++) {
+			for (int z = room.z0(); z <= room.z1(); z++) {
+				for (int y = standing; y <= standing + 5; y++) {
+					if (EndTestSupport.state(end, min, x, y, z).is(BlockTags.BEDS)) {
+						bad.append(" a bed at ").append(x).append(',').append(y).append(',').append(z);
+					}
+				}
+			}
 		}
-		if (EndTestSupport.state(end, min, 0, EndCastle.ROOF_Y + 1, 0).isAir() || !EndTestSupport.state(end, min, 15, EndCastle.ROOF_Y + 1, 15).isAir()) {
-			bad.append(" no low parapet round a clear deck");
+		if (!EndTestSupport.state(end, min, room.x0() + 8, standing + 6, room.z0() + 4).isSolid()
+			|| !EndTestSupport.state(end, min, room.x0() + 8, standing + 5, room.z0() + 3).isAir()) {
+			bad.append(" the rest room is not six tall inside");
 		}
-		EndTestSupport.result("buildTop", "bad=" + bad.length());
+		int centre = EndCastle.SIZE / 2;
+		int first = Integer.MAX_VALUE;
+		int last = Integer.MIN_VALUE;
+		for (int x = -EndCastle.ZONE_MARGIN; x < EndCastle.SIZE + EndCastle.ZONE_MARGIN; x++) {
+			if (!EndTestSupport.state(end, min, x, EndCastle.ROOF_Y, centre).isAir()) {
+				first = Math.min(first, x);
+				last = Math.max(last, x);
+			}
+		}
+		if (last - first != 2 * EndCastle.DISC_RADIUS) {
+			bad.append(" the deck spans ").append(last - first).append(" blocks across its middle row");
+		}
+		int rim = centre + EndCastle.DISC_RADIUS - 1;
+		int parapet = 0;
+		for (int up = 1; up <= 6; up++) {
+			parapet += EndTestSupport.state(end, min, rim, EndCastle.ROOF_Y + up, centre + 3).isAir() ? 0 : 1;
+		}
+		if (parapet < 3 || parapet > 4) {
+			bad.append(" the parapet is ").append(parapet).append(" tall");
+		}
+		for (int dx = -3; dx <= 3; dx++) {
+			for (int dz = -3; dz <= 3; dz++) {
+				for (int up = 1; up <= 8; up++) {
+					if (!EndTestSupport.state(end, min, centre + dx, EndCastle.ROOF_Y + up, centre + dz).isAir()) {
+						bad.append(" the portal centre is blocked at +").append(up);
+					}
+				}
+			}
+		}
+		for (int distance = 5; distance <= 18; distance++) {
+			for (int lane = -2; lane <= 2; lane++) {
+				for (int up = 1; up <= 4; up++) {
+					boolean clear = EndTestSupport.state(end, min, centre + distance, EndCastle.ROOF_Y + up, centre + lane).isAir()
+						&& EndTestSupport.state(end, min, centre - distance, EndCastle.ROOF_Y + up, centre + lane).isAir()
+						&& EndTestSupport.state(end, min, centre + lane, EndCastle.ROOF_Y + up, centre + distance).isAir()
+						&& EndTestSupport.state(end, min, centre + lane, EndCastle.ROOF_Y + up, centre - distance).isAir();
+					if (!clear) {
+						bad.append(" a lane is blocked at ").append(distance).append(',').append(lane).append(",+").append(up);
+					}
+				}
+			}
+		}
+		for (int ox : new int[] {1, EndCastle.SIZE - 2}) {
+			for (int oz : new int[] {1, EndCastle.SIZE - 2}) {
+				for (int y = EndCastle.slabY(5) + 1; y <= EndCastle.ROOF_Y + 8; y++) {
+					if (EndTestSupport.state(end, min, ox, y, oz).isAir()) {
+						bad.append(" a corner pillar is open at ").append(ox).append(',').append(y).append(',').append(oz);
+						break;
+					}
+				}
+			}
+		}
+		EndTestSupport.result("buildTop", "deckAcross=" + (last - first) + " parapet=" + parapet + " bad=" + bad.length());
 		helper.assertTrue(bad.isEmpty(), "the top of the castle:" + bad);
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mod-stella-end-test:build_disc", maxTicks = 20)
+	public void theRooftopPlayersAreThoseOverTheDiscNotOverTheKeepSquare(final GameTestHelper helper) {
+		double deck = Rooftop.DECK_Y + 1.5;
+		boolean wide = Rooftop.contains(-20.5, deck, 0.5);
+		boolean rim = Rooftop.contains(EndCastle.DISC_RADIUS - 0.5, deck, 0.5);
+		boolean beyond = Rooftop.contains(EndCastle.DISC_RADIUS + 1.5, deck, 0.5);
+		boolean corner = Rooftop.contains(19.5, deck, 19.5);
+		boolean below = Rooftop.contains(0.5, EndCastle.REST_Y + 2.0, 0.5);
+		EndTestSupport.result("buildDisc", "wide=" + wide + " rim=" + rim + " beyond=" + beyond + " corner=" + corner + " below=" + below);
+		helper.assertTrue(wide && rim, "a point over the disc outside the keep square is not on the rooftop");
+		helper.assertTrue(!beyond && !corner, "a point past the rim of the disc is on the rooftop");
+		helper.assertTrue(!below, "a point under the deck is on the rooftop");
 		helper.succeed();
 	}
 
@@ -306,8 +378,8 @@ public class CastleBuildGameTest {
 		boolean differs = false;
 		for (int x = 0; x < EndCastle.SIZE && !differs; x++) {
 			for (int z = 0; z < EndCastle.SIZE; z++) {
-				boolean a = EndTestSupport.state(end, EndCastle.min(), x, EndCastle.slabY(2) + 10, z).isAir();
-				boolean b = EndTestSupport.state(end, OTHER_MIN, x, EndCastle.slabY(2) + 10, z).isAir();
+				boolean a = EndTestSupport.state(end, EndCastle.min(), x, EndCastle.slabY(2) + 3, z).isAir();
+				boolean b = EndTestSupport.state(end, OTHER_MIN, x, EndCastle.slabY(2) + 3, z).isAir();
 				if (a != b) {
 					differs = true;
 					break;
@@ -316,7 +388,7 @@ public class CastleBuildGameTest {
 		}
 		helper.assertTrue(real.isEmpty(), "the real castle departs from its plan:" + real);
 		helper.assertTrue(second.isEmpty(), "the second castle departs from its plan:" + second);
-		helper.assertTrue(differs, "two seeds built the same walls on floor 2");
+		helper.assertTrue(differs, "two seeds built the same doorways on floor 2");
 		helper.succeed();
 	}
 
@@ -347,9 +419,9 @@ public class CastleBuildGameTest {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		other(helper);
 		Set<Block> kinds = new HashSet<>();
-		for (int y = EndCastle.BASE_Y; y <= EndCastle.ROOF_Y + 2; y++) {
-			for (int x = 0; x < EndCastle.SIZE; x++) {
-				for (int z = 0; z < EndCastle.SIZE; z++) {
+		for (int y = EndCastle.BASE_Y; y <= EndCastle.ROOF_Y + EndCastle.TOWER_HEIGHT + 2; y++) {
+			for (int x = -EndCastle.ZONE_MARGIN; x < EndCastle.SIZE + EndCastle.ZONE_MARGIN; x++) {
+				for (int z = -EndCastle.ZONE_MARGIN; z < EndCastle.SIZE + EndCastle.ZONE_MARGIN; z++) {
 					BlockState state = EndTestSupport.state(end, OTHER_MIN, x, y, z);
 					if (!state.isAir()) {
 						kinds.add(state.getBlock());
@@ -371,63 +443,9 @@ public class CastleBuildGameTest {
 	// -- Scans ---------------------------------------------------------------------------------------------------
 
 	/**
-	 * Counts the pieces the open cells of one layer fall into. A walking scan wants a floor under the feet and air at
-	 * the feet and the head; a room scan wants only air in the layer.
+	 * Every way the level departs from the plan, as text; empty when it matches. A wall stands whole, a doorway is
+	 * clear up to its lintel, a spawn cell has a floor and head room, and each chest pair is where the plan puts it.
 	 */
-	static int components(final ServerLevel end, final BlockPos min, final int y, final boolean walking, final int floor) {
-		int size = EndCastle.SIZE;
-		boolean[] open = new boolean[size * size];
-		for (int x = 0; x < size; x++) {
-			for (int z = 0; z < size; z++) {
-				BlockPos at = EndTestSupport.world(min, x, y, z);
-				boolean air = end.getBlockState(at).isAir();
-				if (walking) {
-					boolean headroom = end.getBlockState(at.above()).isAir();
-					boolean ground = end.getBlockState(at.below()).isFaceSturdy(end, at.below(), net.minecraft.core.Direction.UP);
-					open[x * size + z] = air && headroom && ground;
-				} else {
-					open[x * size + z] = air;
-				}
-			}
-		}
-		boolean[] seen = new boolean[size * size];
-		int pieces = 0;
-		int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-		for (int start = 0; start < size * size; start++) {
-			if (!open[start] || seen[start]) {
-				continue;
-			}
-			pieces++;
-			ArrayDeque<Integer> queue = new ArrayDeque<>();
-			queue.add(start);
-			seen[start] = true;
-			while (!queue.isEmpty()) {
-				int at = queue.poll();
-				for (int[] step : steps) {
-					int x = at / size + step[0];
-					int z = at % size + step[1];
-					if (x >= 0 && z >= 0 && x < size && z < size && open[x * size + z] && !seen[x * size + z]) {
-						seen[x * size + z] = true;
-						queue.add(x * size + z);
-					}
-				}
-			}
-		}
-		return pieces;
-	}
-
-	/** The first block above a slab at a cell, named with its height, for a failure message. */
-	static String firstSolid(final ServerLevel end, final BlockPos min, final int x, final int slab, final int z) {
-		for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
-			BlockState state = EndTestSupport.state(end, min, x, y, z);
-			if (!state.isAir()) {
-				return state + " at +" + (y - slab);
-			}
-		}
-		return "none";
-	}
-
-	/** Every way the level departs from the plan, as text; empty when it matches. */
 	static String mismatches(final ServerLevel end, final CastleLayout layout, final BlockPos min) {
 		StringBuilder bad = new StringBuilder();
 		for (int floor = 1; floor <= EndCastle.FLOORS; floor++) {
@@ -435,36 +453,40 @@ public class CastleBuildGameTest {
 			int slab = EndCastle.slabY(floor);
 			for (int x = 0; x < EndCastle.SIZE; x++) {
 				for (int z = 0; z < EndCastle.SIZE; z++) {
-					boolean shaft = (plan.up() != null && plan.up().contains(x, z)) || (plan.arrival() != null && plan.arrival().contains(x, z));
+					byte kind = plan.kind(x, z);
 					int cellX = x;
 					int cellZ = z;
-					boolean chest = plan.chests().stream().anyMatch(spot -> spot.x() == cellX && spot.z() == cellZ);
-					byte kind = plan.kind(x, z);
-					int solidLayers = 0;
-					for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
-						solidLayers += EndTestSupport.state(end, min, x, y, z).isAir() ? 0 : 1;
-					}
-					if (kind == CastleLayout.WALL && solidLayers != EndCastle.FLOOR_HEIGHT - 1) {
-						bad.append(" floor ").append(floor).append(" wall ").append(x).append(',').append(z).append(" has ").append(solidLayers).append(" layers");
-					} else if (kind == CastleLayout.OPEN && !shaft && !chest && solidLayers != 0) {
-						bad.append(" floor ").append(floor).append(" room cell ").append(x).append(',').append(z).append(" holds ").append(solidLayers).append(" layers, first ")
-							.append(firstSolid(end, min, x, slab, z));
-					} else if (kind == CastleLayout.DOOR) {
-						// A doorway is clear up to the lintel, and the wall stands above it.
-						int lintel = EndCastle.FLOOR_HEIGHT - 1 - CastleLayout.DOOR_HEIGHT;
-						boolean barrier = plan.doors().stream().anyMatch(door -> door.contains(cellX, cellZ) && door.barrier());
-						int low = 0;
-						for (int y = slab + 1; y <= slab + CastleLayout.DOOR_HEIGHT; y++) {
-							low += EndTestSupport.state(end, min, x, y, z).isAir() ? 0 : 1;
+					if (kind == CastleLayout.WALL) {
+						for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
+							if (EndTestSupport.state(end, min, x, y, z).isAir()) {
+								bad.append(" floor ").append(floor).append(" wall ").append(x).append(',').append(z).append(" is open at +").append(y - slab);
+								break;
+							}
 						}
-						if (solidLayers != lintel + (barrier ? CastleLayout.DOOR_HEIGHT : 0) || (!barrier && low != 0)) {
-							bad.append(" floor ").append(floor).append(" door ").append(x).append(',').append(z).append(" has ").append(solidLayers).append(" layers");
+					} else if (kind == CastleLayout.DOOR) {
+						boolean barrier = plan.doors().stream().anyMatch(door -> door.contains(cellX, cellZ) && door.barrier());
+						for (int y = slab + 1; y < slab + EndCastle.FLOOR_HEIGHT; y++) {
+							BlockState state = EndTestSupport.state(end, min, x, y, z);
+							boolean below = y <= slab + CastleLayout.DOOR_HEIGHT;
+							boolean fault = below ? (barrier ? !state.is(Blocks.BARRIER) : !state.isAir()) : state.isAir();
+							if (fault) {
+								bad.append(" floor ").append(floor).append(" door ").append(x).append(',').append(z).append(" is ").append(state).append(" at +").append(y - slab);
+								break;
+							}
 						}
 					}
 				}
 			}
+			for (int[] cell : plan.spawnCells()) {
+				BlockPos feet = EndTestSupport.world(min, cell[0], EndCastle.standY(floor), cell[1]);
+				boolean room = end.getBlockState(feet).isAir() && end.getBlockState(feet.above()).isAir() && end.getBlockState(feet.above(2)).isAir();
+				if (!room || !end.getBlockState(feet.below()).isFaceSturdy(end, feet.below(), Direction.UP)) {
+					bad.append(" floor ").append(floor).append(" spawn cell ").append(cell[0]).append(',').append(cell[1]).append(" is blocked");
+				}
+			}
 			for (CastleLayout.Chest chest : plan.chests()) {
-				if (!EndTestSupport.state(end, min, chest.x(), EndCastle.standY(floor), chest.z()).is(Blocks.CHEST)) {
+				if (!EndTestSupport.state(end, min, chest.x(), EndCastle.standY(floor), chest.z()).is(Blocks.CHEST)
+					|| !EndTestSupport.state(end, min, chest.partnerX(), EndCastle.standY(floor), chest.partnerZ()).is(Blocks.CHEST)) {
 					bad.append(" floor ").append(floor).append(" chest missing at ").append(chest.x()).append(',').append(chest.z());
 				}
 			}

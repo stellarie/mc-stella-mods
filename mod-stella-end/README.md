@@ -13,28 +13,50 @@ it. The design is in the blackboard task `stella-end-castle`.
 
 ### The castle
 
-- The castle is 32 by 32 blocks and stands on the End origin: x and z run from -16 to 15. Floor `n` spans y
-  `64 + 16 * (n - 1)` to `64 + 16 * n - 1`. Its slab is one block thick at the bottom of that span.
-- Floors 1 to 5 hold 4 to 8 rooms. A binary split of the 30 by 30 interior makes them; every room is at least 7 by 7.
-  Each dividing wall has one doorway, three cells wide where the wall allows, so every room joins the others.
-- Floor 6 is one open arena with four chambers in its corners: the stairs in, the stairs out behind a barrier door,
-  the vault, and a spare room. The chambers keep the floor above four rooms.
-- A world seed and a floor number fix a floor. Two worlds differ; one world never changes between loads.
-- One spiral stair of 16 steps climbs from each floor to the next: south-east on odd floors, north-west on even ones.
-  The ceiling over its last four steps is open, and the top step takes the cell of the slab above it.
-- The rest area is a 12 by 12 room above floor 6, with a bed, a crafting table, an anvil and an ender chest. Its stair
-  climbs to the rooftop, an open deck with a low parapet.
-- Sea lanterns are set into every floor slab, a grid of them and one in each room.
+The keep is 32 by 32 blocks and stands on the End origin: x and z run from -16 to 15. Floor `n` spans y
+`64 + 16 * (n - 1)` to `64 + 16 * n - 1`. Its slab is one block thick at the bottom of that span. The plan is in
+`CastleLayout`; `CastleBuilder` and its helpers write it as blocks.
+
+- **Ground.** The build clears the zone, then fills every column of the 48 by 48 outer zone from the base down to the
+  first solid block under it. No air lies between the keep and the island. A column with no island within 80 blocks is
+  filled to that depth.
+- **Outer zone.** The yard runs from -24 to 23 and is paved at the level of the floor 1 slab. It holds ruined purpur
+  pillars, a market stall, and a lean-to camp with crates and barrels. A paved way leads to the gate, a 3 wide door in the
+  south wall of floor 1 under a canopy with banners.
+- **Stairs.** Every stair is a straight flight of 16 steps, 3 lanes wide. The slab over its last three steps is open, so a
+  mob can jump up them.
+  - Floors 1 to 3 have one flight each, in a wing of the ring of rooms. None stands in the courtyard.
+  - Floor 4 has four flights to floor 5, one along each outer wall of the middle room.
+  - Floor 5 has one flight into the south-east corner of the arena. Its middle step is `CastleLayout.sovereignTrigger()`.
+- **Floors 1 to 3.** Rooms stand in a ring round a 12 by 12 courtyard. Floor 1 rooms have doorways to it. Floors 2 and 3
+  have windows onto it. The courtyard is open air from the floor 1 ground to the floor 4 slab. It holds a fountain, grass,
+  flowers and three trees. A world seed and a floor number fix the doorways and the optional merges of rooms.
+- **Floor 4.** The floor is whole. A middle room stands over the courtyard, and four rooms in a pinwheel round it hold the
+  flights.
+- **Floor 5.** A 20 wide hall has an open balcony, 6 deep, on its west and east sides. Four corner pillars stand at the
+  outer corners of the balconies and run up to the rooftop.
+- **Floor 6.** The great hall is 24 by 24 with a vaulted ceiling, two pillar rows, pews, and a gallery on each side wall.
+  A 4 wide open terrace runs round it. The Sovereign anchor stands in the nave. A sealed door at the far end shuts off the
+  apse stair to the rest room. `CastleBuilder.setExitDoor` opens and shuts it.
+- **Rest room.** It sits on the hall roof and is 6 blocks tall inside. It holds a crafting table, an anvil, an ender chest
+  and a row of empty chests, and no bed. A stair climbs from it to a hatch in the rooftop, beside the parapet.
+- **Rooftop.** A disc 46 blocks across, centred on the End origin, with a parapet 4 blocks tall and covered arches cut
+  into it. The corner pillars rise into it as towers. A ring of half walls, pillar stumps and rubble gives cover. The
+  exit portal at the centre and four lanes to it stay clear. A solid crown of masonry carries the disc.
+- **Dressing.** Every room has props, and windows of glass panes and iron bars. Some have a partial ceiling or a ledge
+  with a ladder. The plan sets 2 to 4 candles in every room. They are the only light: the castle holds no other block
+  that gives light.
 - The castle is built once, on the first load of a castle chunk or on the first arrival, whichever comes first. The
-  End level saves a `built` flag. The build clears the whole volume first.
+  End level saves a `built` flag.
 - The castle blocks are in `minecraft:dragon_immune`, so the vanilla dragon cannot break them.
-- Vanilla natural spawning is refused inside the castle volume. The floor spawner owns the population.
+- Vanilla natural spawning is refused inside the outer zone, up to the tops of the towers. The floor spawner owns the
+  population. It never spawns in the courtyard, and floor 6 and the rest room have no spawns.
 - The vanilla exit portal podium is carved into the deck at the origin once the dragon fight starts. Its base sits one
   block under the deck. The deck centre must stay clear.
 
 ### Arrival
 
-- A player who enters the End by its portal lands on the floor 1 landing cell in the north-west corner. The vanilla
+- A player who enters the End by its portal lands on the floor 1 landing cell in the north-west corner room. The vanilla
   obsidian platform is not built. Mobs and items keep vanilla's rules, and so does the way back.
 
 ### The floor spawner
@@ -42,7 +64,7 @@ it. The design is in the blackboard task `stella-end-castle`.
 - A floor works only while a living player stands within 48 blocks of it. Floor 6 has no spawner.
 - Every 40 ticks it tops the floor up to 24 hostile mobs, 4 at a time. The count comes from a recorded set of
   identities that entity load and unload events keep. A floor waits until all four castle chunks have loaded.
-- A spawn stands on solid ground in a room and at least 10 blocks from every player.
+- A spawn stands on solid ground in a room, clear of walls, stairs and props, and at least 10 blocks from every player.
 - The mix is 70 per cent wither skeleton, 15 per cent enderman and 15 per cent shulker. Floors 1 and 2 give the
   shulker share to wither skeletons.
 - Floors 1 to 5 each keep one witch alive. It counts outside the 24. The floor 5 witch is elite.
@@ -60,8 +82,8 @@ it. The design is in the blackboard task `stella-end-castle`.
 
 ### Treasure
 
-- Each floor holds 2 random chests and 1 vault chest. The vault stands at a fixed place on every floor: north-east on
-  odd floors, south-west on even ones.
+- Each floor holds 2 random chests and 1 vault chest. Every one is a double chest, half under rubble with its lid in view.
+  The loot table sits on the left half, so the pair rolls once. The vault stands at a fixed place on every floor.
 - Random chests use `mod-stella-end:chests/castle_floor`, which rolls the vanilla End city and bastion tables.
 - Vaults use `mod-stella-end:chests/vault_floor_<n>`. A vault holds void shards, a relic, a spell book, an enchanted
   netherite item and an End city roll. Floors 2 to 5 hold their own relic; floor 6 holds one of the four.
@@ -87,12 +109,19 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 
 ### The Undead Blaze Sovereign (floor 6)
 
-- A vanilla blaze at level 120. Base health 600, then the mobs scaling, then the rpg health scale. The attribute ceiling
-  of the rpg mod caps the result at 1,000,000.
+- A vanilla blaze at level 120 with a fixed maximum health of 350,000. The level adds no health: `HealthBridge` drops
+  every modifier but the rpg health scale and stores the base as the total over that scale K, so the scale brings it back to
+  350,000. Without the rpg mod the attribute ceiling cuts it.
 - It stands at the arena anchor. Its speed is zero, it has no gravity, and its place is reset every tick.
-- A player who stands in the arena room raises it. Its boss bar shows to players within 48 blocks.
-- Every 20 ticks it sets 8 to 12 soul flames on random floor cells within 10 blocks. A flame burns out after 100 ticks.
+- It rises when a player reaches the middle step of the stair from floor 5 into the hall, in any of its 3 lanes
+  (`CastleLayout.sovereignTrigger()` is its middle lane). Building the castle raises nothing, and the way to the rest area
+  stays shut until it dies. Its boss bar shows to players within 48 blocks.
+- Every 100 ticks it bursts soul charges in all directions: 16 level, evenly spaced, and 4 more at pitches of +60, +30, -20
+  and -45 degrees. A burst needs a player in range.
+- Every 40 ticks it rains 6 soul charges straight down from 12 to 16 blocks over random points within 7 blocks of it. The hall
+  is 14 blocks high, so a column with less room takes the charge as high as it fits.
 - Every 60 ticks it fires 5 soul charges at players within 48 blocks. A volley needs a player in range.
+- A soul charge sets no fire where it lands (`SmallFireballMixin`). The hall holds wood, wool and books.
 - A blow from the Sovereign or from its charge applies wither II for 100 ticks.
 - Every 200 ticks it calls 3 undead blazes, up to 12 alive. The record of identities keeps the count.
 - An undead blaze is a vanilla blaze at level 115, tagged `mod-stella-end.undead`. Its charges fly at half the vanilla
@@ -105,19 +134,34 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - The controller keeps the vanilla dragon in the hover phase and sets its place every tick. It is over the rooftop from
   its first tick, never below the deck, and never past 48 blocks of the origin. Vanilla's phases never run, so the mobs
   mod's phase redirects stay as they were.
-- Level 150. The dragon is claimed before the mobs mod rolls it.
+- Level 150, with a fixed maximum health of 600,000 (stored as for the Sovereign). The dragon is claimed before the mobs
+  mod rolls it.
+- Its cruise is 30 per cent of what it was (`DragonFlight.CRUISE`). The swoop and the dive keep their speed.
 - Passive until a player stands on the rooftop. Awake, it circles and picks an attack every 100 ticks. It calms 200 ticks
-  after the roof empties.
+  after the roof empties. The attacks aim at the deck disc, not at a square.
+- Swoop and dive start with a wind-up: the dragon brakes for 20 ticks, hangs still, and winds a spiral of End particles
+  round itself until 100 ticks have passed since the wind-up began. Then the attack starts at the nearest player.
 - Swoop: it flies through the nearest player. Everything in its path takes 30 damage and slowness II for 100 ticks.
 - Breath barrage: 12 dragon fireballs, 4 ticks apart, at points on the roof.
 - Dive: it drops onto the roof. Everything within 8 blocks gets an upward velocity of 1.6.
+- Airdrop: it flies over the middle of the roof and lets go of 2 skeleton archers and 2 wither skeletons in full netherite,
+  level 120, 6 to 9 blocks from the middle and 10 blocks over the deck. It adds none while 8 of its airdrop mobs stand.
+- Breath clouds of the dragon's fireballs last 60 ticks in all, the 20 tick wait included, not 600.
+- Perch: every 600 to 900 ticks, drawn each time, it lands on the portal for 200 ticks from touchdown. It takes normal
+  damage there. While it sits, 3 breath clouds fall on random points of the deck disc every 5 ticks. The timer runs while
+  the dragon is passive or awake, and stands still during the roost.
 - Roost: at half health, once, it lands on the portal for 2,400 ticks and takes a quarter of the damage. Every 100 ticks
-  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double.
+  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double. A
+  roost takes the dragon from a perch.
 - Crystals: the buff of a pillar follows vanilla's spike order. 1 regeneration, 2 damage plus 20 per cent, 3 damage taken
   minus 15 per cent, 4 speed plus 20 per cent, 5 sixteen barrage shots, 6 knockback resistance, 7 wyvern return in 300
   ticks, 8 swoop slowness IV, 9 dive fire charges, 10 absorption 40 (times the rpg health scale).
-- Wyverns: four phantoms at scale 3, each ridden by a skeleton in netherite with a netherite sword, level 130. A rider
-  alive means the wyvern has no target. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Wyverns: four phantoms at scale 3, each ridden by a skeleton at scale 1.5 in netherite with a bow, level 130. A rider
+  alive means the wyvern has no target, and the wyvern circles the middle of the roof between 8 and 14 blocks over the deck,
+  where its rider's bow reaches. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Factions: every mob of the castle (the floor mobs, the Sovereign, the undead blazes, the dragon and its side) is one side.
+  Two mixins (`MobTargetMixin`, `LivingEntityAngerMixin`) keep a castle mob from taking another as a target or answering
+  its blow. A player, and any creature outside the castle, stays a valid target.
 - Death: one dragon egg and four dragon scales drop beside the portal. The players on the roof share the experience a
   level 120 kill gives on the rpg curve. The dragon's own side leaves with it. Rooftop spawns stay barred for 36,000
   ticks. Vanilla's own egg block is not placed.
@@ -149,7 +193,7 @@ Behaviour lines go through the mod logger at INFO from the game test source set 
 
 ## Manual acceptance
 
-- Walk from floor 1 to the rooftop and judge the feel of the rooms, the stairs and the mob density.
+- Walk from the gate to the rooftop and judge the look of the yard, the rooms, the stairs, the dressing and the mob density.
 - Open one vault on a floor and read its contents.
 - Fight the Sovereign, then the dragon. Judge the flight, the swoop, the roost and the difficulty.
 - Watch an undead blaze and the Sovereign on a client: both draw grey.

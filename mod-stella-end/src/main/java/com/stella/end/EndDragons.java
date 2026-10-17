@@ -79,6 +79,7 @@ public final class EndDragons {
 		});
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> reset());
 		Wyverns.register();
+		DragonBreath.register();
 	}
 
 
@@ -108,6 +109,7 @@ public final class EndDragons {
 			LevelBridge.claim(dragon);
 			dragon.addTag(TAG);
 			LevelBridge.apply(dragon, EndLevels.DRAGON);
+			HealthBridge.fixMaxHealth(dragon, DragonRules.MAX_HEALTH);
 		}
 		DragonState state = STATES.computeIfAbsent(dragon.getUUID(), DragonState::new);
 		long now = EndClock.now(end);
@@ -115,6 +117,7 @@ public final class EndDragons {
 		state.modeSince = now;
 		state.lastRoofSeen = now;
 		state.nextAttackAt = now + WAKE_DELAY;
+		DragonPerch.schedule(state, now, end.getRandom());
 		dragon.getPhaseManager().setPhase(EnderDragonPhase.HOVERING);
 		Vec3 hover = Rooftop.hoverPoint();
 		if (dragon.getY() < Rooftop.DECK_Y + Rooftop.HOVER_HEIGHT - 4.0 || Math.hypot(dragon.getX(), dragon.getZ()) > DragonRules.LEASH) {
@@ -158,6 +161,7 @@ public final class EndDragons {
 		DEATHS.clear();
 		reviveRetryAt = 0L;
 		Wyverns.reset();
+		DragonBreath.reset();
 	}
 
 
@@ -187,14 +191,20 @@ public final class EndDragons {
 			DragonBuffs.refresh(end, dragon, state);
 		}
 		DragonBuffs.regenerate(dragon, state, now);
+		// The sleep holds the perch timer: the time it lasts is added back.
+		if (state.mode == DragonState.Mode.ROOST && state.lastTick != EndState.NEVER) {
+			state.perchAt += now - state.lastTick;
+		}
+		state.lastTick = now;
 		List<ServerPlayer> roof = Rooftop.players(end);
 		if (!roof.isEmpty()) {
 			state.lastRoofSeen = now;
 		}
-		decide(dragon, state, roof.isEmpty(), now);
+		decide(end, dragon, state, roof.isEmpty(), now);
 		double speed = DragonRules.speedMultiplier(state.buffs);
 		switch (state.mode) {
 			case ROOST -> DragonRoost.tick(end, dragon, state, now);
+			case PERCH -> DragonPerch.tick(end, dragon, state, now);
 			case PASSIVE -> DragonFlight.arrive(dragon, state, Rooftop.hoverPoint(), DragonFlight.CRUISE * speed);
 			case AWAKE -> {
 				if (state.current != null) {
@@ -212,14 +222,22 @@ public final class EndDragons {
 		Wyverns.tick(end, dragon, state, now);
 	}
 
-	/** Moves the dragon between passive, awake and roosting. */
-	private static void decide(final EnderDragon dragon, final DragonState state, final boolean roofEmpty, final long now) {
+	/** Moves the dragon between passive, awake, roosting and perching. A roost takes it from a perch. */
+	private static void decide(final ServerLevel end, final EnderDragon dragon, final DragonState state, final boolean roofEmpty, final long now) {
 		if (state.mode == DragonState.Mode.ROOST) {
 			if (DragonRoost.over(state, now)) {
 				switchTo(state, roofEmpty ? DragonState.Mode.PASSIVE : DragonState.Mode.AWAKE, now);
 			}
 		} else if (DragonRoost.due(dragon, state)) {
+			DragonPerch.interrupt(state, now);
 			DragonRoost.begin(dragon, state, now);
+		} else if (state.mode == DragonState.Mode.PERCH) {
+			if (DragonPerch.over(state, now)) {
+				DragonPerch.finish(state, now, end.getRandom());
+				switchTo(state, roofEmpty ? DragonState.Mode.PASSIVE : DragonState.Mode.AWAKE, now);
+			}
+		} else if (state.mode == DragonState.Mode.AWAKE && DragonPerch.due(state, now)) {
+			DragonPerch.begin(state, now);
 		} else if (!roofEmpty && state.mode == DragonState.Mode.PASSIVE) {
 			switchTo(state, DragonState.Mode.AWAKE, now);
 		} else if (roofEmpty && state.mode == DragonState.Mode.AWAKE && now - state.lastRoofSeen >= DragonRules.CALM_TICKS) {
@@ -232,6 +250,7 @@ public final class EndDragons {
 		state.mode = mode;
 		state.modeSince = now;
 		state.current = null;
+		state.launchAt = EndState.NEVER;
 		state.path.clear();
 		if (mode == DragonState.Mode.AWAKE) {
 			state.nextAttackAt = now + WAKE_DELAY;

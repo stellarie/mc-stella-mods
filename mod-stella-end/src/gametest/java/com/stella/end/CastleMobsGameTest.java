@@ -201,8 +201,8 @@ public class CastleMobsGameTest {
 	public void vanillaNaturalSpawningIsRefusedInsideTheCastleVolume(final GameTestHelper helper) {
 		ServerLevel end = EndTestSupport.fresh(helper);
 		EndTestSupport.joinOnFloor(helper, end, 1);
-		// The dark hollow of the rest level: solid slab below, air above, no light, and far from the player.
-		BlockPos hollow = EndTestSupport.world(EndCastle.min(), 20, EndCastle.REST_Y + 1, 20);
+		// The floor of the rest room: solid slab below, air above, and far from the player.
+		BlockPos hollow = EndTestSupport.world(EndCastle.min(), 14, EndCastle.REST_Y + 1, 10);
 		boolean hollowOpen = end.getBlockState(hollow).isAir() && end.getBlockState(hollow.above()).isAir() && end.getBlockState(hollow.below()).isSolid();
 		helper.assertTrue(hollowOpen, "the test spot is not an open dark floor: " + end.getBlockState(hollow) + " over " + end.getBlockState(hollow.below()));
 		java.util.Set<java.util.UUID> before = new java.util.HashSet<>();

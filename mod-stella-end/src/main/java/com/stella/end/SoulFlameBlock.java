@@ -12,11 +12,12 @@ import net.minecraft.world.level.block.SoulFireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The Sovereign's soul flame: soul fire that holds on any solid floor, not only soul sand and soil, and burns out
- * alone. The Sovereign's ring removes a flame on its own count, and this scheduled tick is the fallback for a flame
- * the count lost across a restart.
+ * The soul flame: soul fire that holds on any solid floor, not only soul sand and soil, and burns out alone after
+ * {@link #LIFE} ticks. The Sovereign no longer sets it; the block stays registered for the worlds that hold one.
  */
 public class SoulFlameBlock extends SoulFireBlock {
+	public static final int LIFE = 120;
+
 	public SoulFlameBlock(final Properties properties) {
 		super(properties);
 	}
@@ -37,7 +38,7 @@ public class SoulFlameBlock extends SoulFireBlock {
 	protected void onPlace(final BlockState state, final Level level, final BlockPos pos, final BlockState old, final boolean moved) {
 		super.onPlace(state, level, pos, old, moved);
 		if (level.getBlockState(pos).is(this)) {
-			level.scheduleTick(pos, this, UndeadSovereign.RING_LIFE + UndeadSovereign.RING_PERIOD);
+			level.scheduleTick(pos, this, LIFE);
 		}
 	}
 

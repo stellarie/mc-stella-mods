@@ -33,6 +33,7 @@ final class DragonRoost {
 		state.roostStartedAt = now;
 		state.nextSummonAt = now + DragonRules.ROOST_SUMMON_PERIOD;
 		state.current = null;
+		state.launchAt = EndState.NEVER;
 		state.path.clear();
 		dragon.addTag(EndDragons.ROOSTED_TAG);
 		BehaviorLog.info("[END] dragon roost begins health={} clock={}", dragon.getHealth() / dragon.getMaxHealth(), now);

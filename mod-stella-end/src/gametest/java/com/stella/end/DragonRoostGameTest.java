@@ -193,6 +193,9 @@ public class DragonRoostGameTest {
 					}
 					skeletons += summon instanceof WitherSkeleton ? 1 : 0;
 					archers += summon instanceof Skeleton skeleton && skeleton.getMainHandItem().is(Items.BOW) ? 1 : 0;
+					if (summon instanceof Skeleton archer && !WyvernPolishGameTest.shoots(archer)) {
+						bad.add(id + " holds a bow and has no bow goal");
+					}
 					if (LevelBridge.read(summon) != EndLevels.ROOFTOP || !summon.entityTags().contains(EndDragons.SIDE_TAG)) {
 						bad.add(id + " level " + LevelBridge.read(summon));
 					}
@@ -234,10 +237,10 @@ public class DragonRoostGameTest {
 				}
 				EndTestSupport.result("roostWeights", "before=" + before + " after=" + after);
 				EndTestSupport.fresh(helper);
-				helper.assertTrue(before.get(DragonState.Attack.SWOOP) == 1 && before.get(DragonState.Attack.BARRAGE) == 1 && before.get(DragonState.Attack.DIVE) == 1,
-					"the weights before the roost are " + before);
-				helper.assertTrue(after.get(DragonState.Attack.SWOOP) == 2 && after.get(DragonState.Attack.DIVE) == 2 && after.get(DragonState.Attack.BARRAGE) == 1,
-					"the weights after the roost are " + after);
+				helper.assertTrue(before.getOrDefault(DragonState.Attack.SWOOP, 0) == 1 && before.getOrDefault(DragonState.Attack.BARRAGE, 0) == 1
+					&& before.getOrDefault(DragonState.Attack.DIVE, 0) == 1 && before.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the weights before the roost are " + before);
+				helper.assertTrue(after.getOrDefault(DragonState.Attack.SWOOP, 0) == 2 && after.getOrDefault(DragonState.Attack.DIVE, 0) == 2
+					&& after.getOrDefault(DragonState.Attack.BARRAGE, 0) == 1 && after.getOrDefault(DragonState.Attack.AIRDROP, 0) == 1, "the weights after the roost are " + after);
 			})
 			.thenSucceed();
 	}

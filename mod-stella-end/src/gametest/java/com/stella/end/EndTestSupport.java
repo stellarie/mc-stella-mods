@@ -114,21 +114,32 @@ final class EndTestSupport {
 	static final int RING_FROM = -3;
 	static final int RING_TO = 2;
 
-	/** Loads and keeps the four chunks of a castle at a footprint corner: a test player does not move chunk tickets as a real one does. */
+	/** The chunk span of a castle's outer zone for a keep corner, from its first chunk to its last, on each axis. */
+	private static int zoneFrom(final int corner) {
+		return corner - EndCastle.ZONE_MARGIN >> 4;
+	}
+
+	private static int zoneTo(final int corner) {
+		return corner + EndCastle.SIZE + EndCastle.ZONE_MARGIN - 1 >> 4;
+	}
+
+	/** Loads and keeps the sixteen chunks of a castle's outer zone: a test player does not move chunk tickets as a real one does. */
 	static void hold(final ServerLevel level, final BlockPos min) {
-		int x0 = min.getX() >> 4;
-		int z0 = min.getZ() >> 4;
-		for (int dx = 0; dx <= 1; dx++) {
-			for (int dz = 0; dz <= 1; dz++) {
-				level.getChunk(x0 + dx, z0 + dz);
-				level.setChunkForced(x0 + dx, z0 + dz, true);
+		int x0 = zoneFrom(min.getX());
+		int z0 = zoneFrom(min.getZ());
+		int x1 = zoneTo(min.getX());
+		int z1 = zoneTo(min.getZ());
+		for (int cx = x0; cx <= x1; cx++) {
+			for (int cz = z0; cz <= z1; cz++) {
+				level.getChunk(cx, cz);
+				level.setChunkForced(cx, cz, true);
 			}
 		}
 		for (int i = 0; i < 1000 && level.getChunkSource().pollTask(); i++) {
 		}
 		// A saved chunk loads entities after blocks.
 		// An entity added before then is refused.
-		for (int i = 0; i < 20000 && !entitiesLoaded(level, x0, z0, 0, 1); i++) {
+		for (int i = 0; i < 20000 && !entitiesLoaded(level, x0, z0, 0, x1 - x0); i++) {
 			level.getChunkSource().pollTask();
 		}
 	}
@@ -144,9 +155,9 @@ final class EndTestSupport {
 		return true;
 	}
 
-	/** Whether a chunk belongs to the castle's own four, which every test holds. */
+	/** Whether a chunk belongs to the castle's own sixteen, which every test holds. */
 	private static boolean inCastle(final int cx, final int cz) {
-		return cx >= EndCastle.MIN_X >> 4 && cx <= (EndCastle.MIN_X + EndCastle.SIZE - 1) >> 4 && cz >= EndCastle.MIN_Z >> 4 && cz <= (EndCastle.MIN_Z + EndCastle.SIZE - 1) >> 4;
+		return cx >= zoneFrom(EndCastle.MIN_X) && cx <= zoneTo(EndCastle.MIN_X) && cz >= zoneFrom(EndCastle.MIN_Z) && cz <= zoneTo(EndCastle.MIN_Z);
 	}
 
 	/** Holds the ring round the castle too, for a test of something that flies off the roof; an enderman would teleport into it. */
@@ -184,11 +195,9 @@ final class EndTestSupport {
 	}
 
 	static void release(final ServerLevel level, final BlockPos min) {
-		int x0 = min.getX() >> 4;
-		int z0 = min.getZ() >> 4;
-		for (int dx = 0; dx <= 1; dx++) {
-			for (int dz = 0; dz <= 1; dz++) {
-				level.setChunkForced(x0 + dx, z0 + dz, false);
+		for (int cx = zoneFrom(min.getX()); cx <= zoneTo(min.getX()); cx++) {
+			for (int cz = zoneFrom(min.getZ()); cz <= zoneTo(min.getZ()); cz++) {
+				level.setChunkForced(cx, cz, false);
 			}
 		}
 		releaseRing(level);

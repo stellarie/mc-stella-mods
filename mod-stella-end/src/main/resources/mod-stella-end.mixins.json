@@ -9,6 +9,9 @@
 		"EnderDragonFightAccessor",
 		"LivingEntityDamageMixin",
 		"LivingEntityEffectMixin",
+		"LivingEntityAngerMixin",
+		"MobTargetMixin",
+		"SmallFireballMixin",
 		"SmithingMenuMixin",
 		"ItemCombinerAccess"
 	],

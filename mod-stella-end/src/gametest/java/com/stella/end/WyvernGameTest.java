@@ -74,7 +74,7 @@ public class WyvernGameTest {
 						&& pair.rider().getItemBySlot(EquipmentSlot.CHEST).is(Items.NETHERITE_CHESTPLATE)
 						&& pair.rider().getItemBySlot(EquipmentSlot.LEGS).is(Items.NETHERITE_LEGGINGS)
 						&& pair.rider().getItemBySlot(EquipmentSlot.FEET).is(Items.NETHERITE_BOOTS)
-						&& pair.rider().getItemBySlot(EquipmentSlot.MAINHAND).is(Items.NETHERITE_SWORD);
+						&& pair.rider().getItemBySlot(EquipmentSlot.MAINHAND).is(Items.BOW);
 					if (!armoured) {
 						bad.add("rider kit " + pair.rider().getItemBySlot(EquipmentSlot.MAINHAND));
 					}

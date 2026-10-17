@@ -1,17 +1,13 @@
 package com.stella.end;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
@@ -24,25 +20,30 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The boss of floor 6: a blaze that does not move, rings itself in soul flame, volleys soul charges, withers what it
- * hits and calls undead blazes. Its death opens the barrier door to the rest area, and it rises again later.
+ * The boss of floor 6: a blaze that does not move, bursts soul charges in every direction, rains them from above,
+ * volleys them at players, withers what it hits and calls undead blazes. It rises when a player reaches the middle step
+ * of the stair into its hall. Its death opens the barrier door to the rest area, and it rises again later.
  */
 public final class UndeadSovereign {
 	public static final String TAG = "mod-stella-end.sovereign";
-	public static final float BASE_HEALTH = 600.0F;
+	/** Its whole maximum health, whatever its level or the health scale adds. */
+	public static final float MAX_HEALTH = 350000.0F;
 	public static final double SCALE = 3.0;
 	public static final double BAR_RANGE = 48.0;
-	public static final int RING_PERIOD = 20;
-	public static final int RING_LIFE = 100;
-	public static final int RING_MIN = 8;
-	public static final int RING_MAX = 12;
-	public static final int RING_RADIUS = 10;
+	public static final int BURST_PERIOD = 100;
+	/** The burst fires this many charges level round the Sovereign, evenly spaced. */
+	public static final int BURST_RING = 16;
+	/** And one charge at each of these pitches in degrees, above the level (positive) or below it. */
+	public static final List<Double> BURST_PITCHES = List.of(60.0, 30.0, -20.0, -45.0);
+	public static final int RAIN_PERIOD = 40;
+	public static final int RAIN_COUNT = 6;
+	public static final int RAIN_MIN_HEIGHT = 12;
+	public static final int RAIN_MAX_HEIGHT = 16;
+	public static final double RAIN_RADIUS = 7.0;
 	public static final int VOLLEY_PERIOD = 60;
 	public static final int VOLLEY_SIZE = 5;
 	public static final int SUMMON_PERIOD = 200;
@@ -52,13 +53,22 @@ public final class UndeadSovereign {
 	public static final int WITHER_AMPLIFIER = 1;
 	public static final int WITHER_TICKS = 100;
 	private static final int BAR_PERIOD = 10;
+	/** A player this far over the step's top block still stands on it: a jump or a stride on the stair. */
+	private static final double TRIGGER_HEADROOM = 3.0;
 	/** Records keep this many entries; the oldest go first. */
 	private static final int KEPT = 256;
+	/** A rain charge needs this many free cells over its drop point, or the point is skipped. */
+	private static final int RAIN_LEAST_ROOM = 6;
+	private static final int RAIN_TRIES = 3;
 	private static final double SUMMON_NEAR = 4.0;
 	private static final double SUMMON_FAR = 8.0;
 
-	/** One ring pulse: the flames it set, and the clock when it did. */
-	public record Pulse(long at, List<BlockPos> cells) {
+	/** One burst: the charges it fired. */
+	public record Burst(long at, List<UUID> charges) {
+	}
+
+	/** One fall of rain: the charges it dropped. */
+	public record Rain(long at, List<UUID> charges) {
 	}
 
 	/** One volley: the charges it fired. */
@@ -69,15 +79,15 @@ public final class UndeadSovereign {
 	public record Brood(long at, List<UUID> blazes) {
 	}
 
-	private static final List<Pulse> PULSES = new ArrayList<>();
+	private static final List<Burst> BURSTS = new ArrayList<>();
+	private static final List<Rain> RAINS = new ArrayList<>();
 	private static final List<Volley> VOLLEYS = new ArrayList<>();
 	private static final List<Brood> BROODS = new ArrayList<>();
-	/** Every flame the ring has set and not yet put out, with the clock at which it burns out. */
-	private static final Map<BlockPos, Long> FLAMES = new LinkedHashMap<>();
 	private static @Nullable UUID id;
 	private static @Nullable Blaze held;
 	private static @Nullable ServerBossEvent bar;
-	private static long nextRingAt;
+	private static long nextBurstAt;
+	private static long nextRainAt;
 	private static long nextVolleyAt;
 	private static long nextSummonAt;
 
@@ -115,7 +125,6 @@ public final class UndeadSovereign {
 		LevelBridge.claim(blaze);
 		blaze.addTag(TAG);
 		blaze.setAttached(UndeadBlazes.MARK, UndeadBlazes.MARK_SOVEREIGN);
-		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(BASE_HEALTH);
 		blaze.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
 		blaze.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
 		blaze.getAttribute(Attributes.SCALE).setBaseValue(SCALE);
@@ -124,6 +133,7 @@ public final class UndeadSovereign {
 		blaze.setPersistenceRequired();
 		blaze.setCustomName(Component.translatable("entity.mod-stella-end.undead_sovereign"));
 		LevelBridge.apply(blaze, EndLevels.SOVEREIGN);
+		HealthBridge.fixMaxHealth(blaze, MAX_HEALTH);
 		Vec3 at = anchor();
 		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), false);
@@ -149,7 +159,8 @@ public final class UndeadSovereign {
 		id = blaze.getUUID();
 		held = blaze;
 		long now = EndClock.now(end);
-		nextRingAt = now + RING_PERIOD;
+		nextBurstAt = now + BURST_PERIOD;
+		nextRainAt = now + RAIN_PERIOD;
 		nextVolleyAt = now + VOLLEY_PERIOD;
 		nextSummonAt = now + SUMMON_PERIOD;
 		closeBar();
@@ -171,8 +182,12 @@ public final class UndeadSovereign {
 		return entity instanceof Blaze && entity.entityTags().contains(TAG);
 	}
 
-	public static List<Pulse> pulses() {
-		return List.copyOf(PULSES);
+	public static List<Burst> bursts() {
+		return List.copyOf(BURSTS);
+	}
+
+	public static List<Rain> rains() {
+		return List.copyOf(RAINS);
 	}
 
 	public static List<Volley> volleys() {
@@ -191,10 +206,10 @@ public final class UndeadSovereign {
 		closeBar();
 		id = null;
 		held = null;
-		PULSES.clear();
+		BURSTS.clear();
+		RAINS.clear();
 		VOLLEYS.clear();
 		BROODS.clear();
-		FLAMES.clear();
 	}
 
 	private static void closeBar() {
@@ -207,7 +222,6 @@ public final class UndeadSovereign {
 
 	private static void tick(final ServerLevel end) {
 		long now = EndClock.now(end);
-		burnOut(end, now);
 		Blaze sovereign = current(end);
 		if (sovereign == null) {
 			rise(end, now);
@@ -219,9 +233,11 @@ public final class UndeadSovereign {
 		if (sovereign.tickCount % BAR_PERIOD == 0) {
 			updateBar(end, sovereign);
 		}
-		if (now >= nextRingAt) {
-			ring(end, now);
-			nextRingAt = now + RING_PERIOD;
+		if (now >= nextBurstAt && burst(end, sovereign, now)) {
+			nextBurstAt = now + BURST_PERIOD;
+		}
+		if (now >= nextRainAt && rain(end, sovereign, now)) {
+			nextRainAt = now + RAIN_PERIOD;
 		}
 		if (now >= nextVolleyAt && volley(end, sovereign, now)) {
 			nextVolleyAt = now + VOLLEY_PERIOD;
@@ -232,24 +248,28 @@ public final class UndeadSovereign {
 		}
 	}
 
-	/** Raises the Sovereign when a player stands in the arena and none stands there or lies in its waiting time. */
+	/** Raises the Sovereign when a player stands on the middle step of the stair and none stands or lies in its waiting time. */
 	private static void rise(final ServerLevel end, final long now) {
 		EndState state = EndCastles.state(end);
 		boolean waiting = state.sovereignDeadAt() != EndState.NEVER && now < state.sovereignDeadAt() + RESPAWN_TICKS;
-		if (!waiting && playerInArena(end)) {
+		if (!waiting && playerOnTrigger(end)) {
 			spawn(end);
 		}
 	}
 
-	/** Whether a player stands in the arena room of floor 6, as the floor plan draws it. */
-	private static boolean playerInArena(final ServerLevel end) {
-		CastleLayout.FloorPlan plan = EndCastles.layout(end).floor(EndCastle.FLOORS);
+	/** Whether a player stands on the middle step of the stair into the hall, in any of its lanes. */
+	private static boolean playerOnTrigger(final ServerLevel end) {
+		CastleLayout.Flight flight = CastleLayout.FLIGHT_5;
+		int step = CastleLayout.Flight.STEPS / 2;
+		int top = CastleLayout.sovereignTrigger().getY();
 		for (ServerPlayer player : end.players()) {
-			int x = player.getBlockX() - EndCastle.MIN_X;
-			int z = player.getBlockZ() - EndCastle.MIN_Z;
-			boolean inside = x >= 0 && z >= 0 && x < EndCastle.SIZE && z < EndCastle.SIZE;
-			if (player.isAlive() && !player.isSpectator() && inside && EndCastle.floorAt(player.getY()) == EndCastle.FLOORS && plan.room(x, z) == 1) {
-				return true;
+			if (!player.isAlive() || player.isSpectator() || player.getY() < top || player.getY() >= top + TRIGGER_HEADROOM) {
+				continue;
+			}
+			for (int lane = 0; lane < CastleLayout.Flight.WIDTH; lane++) {
+				if (player.getBlockX() == EndCastle.MIN_X + flight.x(step, lane) && player.getBlockZ() == EndCastle.MIN_Z + flight.z(step, lane)) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -269,58 +289,95 @@ public final class UndeadSovereign {
 		}
 	}
 
-	/** Sets eight to twelve soul flames on random floor cells within ten blocks, and writes down when each burns out. */
-	private static void ring(final ServerLevel end, final long now) {
-		int y = EndCastle.standY(EndCastle.FLOORS);
+	/** Fires a charge level in each of sixteen directions round it and one at each pitch up and down. False, and nothing fired, with nobody in range. */
+	private static boolean burst(final ServerLevel end, final Blaze sovereign, final long now) {
+		if (targets(end, sovereign).isEmpty()) {
+			return false;
+		}
+		List<UUID> charges = new ArrayList<>();
+		for (int i = 0; i < BURST_RING; i++) {
+			double yaw = Math.PI * 2.0 * i / BURST_RING;
+			fireBurst(end, sovereign, new Vec3(Math.cos(yaw), 0.0, Math.sin(yaw)), charges);
+		}
+		for (int i = 0; i < BURST_PITCHES.size(); i++) {
+			double yaw = Math.PI * 2.0 * (i + 0.5) / BURST_PITCHES.size();
+			double pitch = Math.toRadians(BURST_PITCHES.get(i));
+			fireBurst(end, sovereign, new Vec3(Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), Math.cos(pitch) * Math.sin(yaw)), charges);
+		}
+		keep(BURSTS, new Burst(now, List.copyOf(charges)));
+		BehaviorLog.info("[END] sovereign burst charges={}", charges.size());
+		return true;
+	}
+
+	private static void fireBurst(final ServerLevel end, final Blaze sovereign, final Vec3 direction, final List<UUID> charges) {
+		var charge = SoulCharges.fire(end, sovereign, direction, SoulCharges.SOVEREIGN_FACTOR);
+		if (charge != null) {
+			charges.add(charge.getUUID());
+		}
+	}
+
+	/**
+	 * Drops soul charges from twelve to sixteen blocks over random points of the arena, straight down. A column with
+	 * less room than that takes the charge as high as it can. False, and nothing dropped, with nobody in range.
+	 */
+	private static boolean rain(final ServerLevel end, final Blaze sovereign, final long now) {
+		if (targets(end, sovereign).isEmpty()) {
+			return false;
+		}
+		int floorY = EndCastle.standY(EndCastle.FLOORS);
 		Vec3 at = anchor();
-		List<BlockPos> candidates = new ArrayList<>();
-		for (int dx = -RING_RADIUS; dx <= RING_RADIUS; dx++) {
-			for (int dz = -RING_RADIUS; dz <= RING_RADIUS; dz++) {
-				BlockPos cell = new BlockPos(Mth.floor(at.x) + dx, y, Mth.floor(at.z) + dz);
-				boolean inReach = Math.hypot(cell.getX() + 0.5 - at.x, cell.getZ() + 0.5 - at.z) <= RING_RADIUS;
-				if (inReach && (end.getBlockState(cell).isAir() || end.getBlockState(cell).is(EndBlocks.soulFlame()))
-					&& end.getBlockState(cell.below()).isFaceSturdy(end, cell.below(), Direction.UP)) {
-					candidates.add(cell);
+		List<UUID> charges = new ArrayList<>();
+		for (int i = 0; i < RAIN_COUNT; i++) {
+			for (int attempt = 0; attempt < RAIN_TRIES; attempt++) {
+				double angle = end.getRandom().nextDouble() * Math.PI * 2.0;
+				double reach = RAIN_RADIUS * Math.sqrt(end.getRandom().nextDouble());
+				double x = at.x + Math.cos(angle) * reach;
+				double z = at.z + Math.sin(angle) * reach;
+				int room = room(end, x, floorY, z);
+				if (room < RAIN_LEAST_ROOM) {
+					continue;
 				}
+				int wanted = RAIN_MIN_HEIGHT + end.getRandom().nextInt(RAIN_MAX_HEIGHT - RAIN_MIN_HEIGHT + 1);
+				Vec3 from = new Vec3(x, floorY + Math.min(wanted, room - 1) + 0.5, z);
+				var charge = SoulCharges.fire(end, sovereign, from, new Vec3(0.0, -1.0, 0.0), SoulCharges.SOVEREIGN_FACTOR);
+				if (charge != null) {
+					charges.add(charge.getUUID());
+				}
+				break;
 			}
 		}
-		Collections.shuffle(candidates, new java.util.Random(end.getRandom().nextLong()));
-		int wanted = RING_MIN + end.getRandom().nextInt(RING_MAX - RING_MIN + 1);
-		List<BlockPos> set = new ArrayList<>(candidates.subList(0, Math.min(wanted, candidates.size())));
-		for (BlockPos cell : set) {
-			if (!end.getBlockState(cell).is(EndBlocks.soulFlame())) {
-				end.setBlock(cell, EndBlocks.soulFlame().defaultBlockState(), Block.UPDATE_ALL);
-			}
-			FLAMES.put(cell.immutable(), now + RING_LIFE);
-		}
-		keep(PULSES, new Pulse(now, List.copyOf(set)));
+		keep(RAINS, new Rain(now, List.copyOf(charges)));
+		BehaviorLog.info("[END] sovereign rain charges={}", charges.size());
+		return true;
 	}
 
-	/** Puts out each flame whose time is up, unless a later pulse set it again. */
-	private static void burnOut(final ServerLevel end, final long now) {
-		if (FLAMES.isEmpty()) {
-			return;
-		}
-		var flames = FLAMES.entrySet().iterator();
-		while (flames.hasNext()) {
-			var flame = flames.next();
-			if (flame.getValue() <= now) {
-				if (end.getBlockState(flame.getKey()).is(EndBlocks.soulFlame())) {
-					end.setBlock(flame.getKey(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-				}
-				flames.remove();
+	/** How many cells a charge can pass through over a column, counted up from the standing cell of the floor. */
+	private static int room(final ServerLevel end, final double x, final int floorY, final double z) {
+		int free = 0;
+		while (free <= RAIN_MAX_HEIGHT) {
+			BlockPos cell = new BlockPos(Mth.floor(x), floorY + free, Mth.floor(z));
+			if (!end.getBlockState(cell).getCollisionShape(end, cell).isEmpty()) {
+				break;
 			}
+			free++;
 		}
+		return free;
 	}
 
-	/** Fires five soul charges at the players in range, spread over them. False, and nothing fired, with nobody in range. */
-	private static boolean volley(final ServerLevel end, final Blaze sovereign, final long now) {
+	/** The players the Sovereign fights: alive, in survival or adventure, and within the range of its bar. */
+	private static List<ServerPlayer> targets(final ServerLevel end, final Blaze sovereign) {
 		List<ServerPlayer> targets = new ArrayList<>();
 		for (ServerPlayer player : end.players()) {
 			if (player.isAlive() && !player.isSpectator() && !player.isCreative() && player.distanceTo(sovereign) <= BAR_RANGE) {
 				targets.add(player);
 			}
 		}
+		return targets;
+	}
+
+	/** Fires five soul charges at the players in range, spread over them. False, and nothing fired, with nobody in range. */
+	private static boolean volley(final ServerLevel end, final Blaze sovereign, final long now) {
+		List<ServerPlayer> targets = targets(end, sovereign);
 		if (targets.isEmpty()) {
 			return false;
 		}
