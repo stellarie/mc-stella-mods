@@ -160,9 +160,7 @@ public class WyvernTweaksGameTest {
 			.thenSucceed();
 	}
 
-	// One bite kills the test player, and the vanilla bite comes as well as the swoop's.
-	// A swoop at a dead player ends, so a second one may have to follow before one reaches a live player.
-	@GameTest(environment = "mod-stella-end-test:wyvern_swoop", maxTicks = 1000)
+	@GameTest(environment = "mod-stella-end-test:wyvern_swoop", maxTicks = 700)
 	public void aFreedWyvernSwoopsAtAPlayerNowAndThenAndReachesThemWhileOthersWithRidersDoNot(final GameTestHelper helper) {
 		WyvernGameTest.Stand stand = WyvernGameTest.stand(helper);
 		ServerPlayer player = EndTestSupport.joinOnRoof(helper, stand.end(), 6.0, 6.0);
@@ -189,6 +187,8 @@ public class WyvernTweaksGameTest {
 			.thenExecute(() -> {
 				freed[0] = WyvernGameTest.escorts(stand.end(), stand.state()).get(0);
 				freed[0].rider().discard();
+				// The game's own bite would come as well as the swoop's, and one bite kills the test player.
+				freed[0].wyvern().setNoAi(true);
 			})
 			.thenWaitUntil(() -> helper.assertTrue(stand.state().slot(0).freedAt() != EndState.NEVER, "the wyvern is not recorded as freed"))
 			.thenExecute(() -> {
