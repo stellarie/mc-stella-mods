@@ -286,7 +286,7 @@ public class WitheringArmsGameTest {
 					helper.assertTrue(mob != null, kind + " was refused");
 					WitheringArms.rollWith(RandomSource.create(win ? winning : losing));
 					Set<UUID> before = itemIds(end);
-					mob.kill(end);
+					EndTestSupport.slay(end, mob);
 					List<ItemStack> dropped = droppedSince(end, before);
 					got.add(kind + (win ? " win " : " lose ") + dropped.stream().map(stack -> stack.getItem().toString()).toList());
 					boolean sword = dropped.stream().anyMatch(stack -> stack.is(WitheringArms.sword()));
@@ -308,9 +308,9 @@ public class WitheringArmsGameTest {
 			end.addFreshEntity(strayArcher);
 			Set<UUID> before = itemIds(end);
 			WitheringArms.rollWith(RandomSource.create(winning));
-			stray.kill(end);
+			EndTestSupport.slay(end, stray);
 			WitheringArms.rollWith(RandomSource.create(winning));
-			strayArcher.kill(end);
+			EndTestSupport.slay(end, strayArcher);
 			List<ItemStack> strayDrops = droppedSince(end, before);
 			boolean strayArms = strayDrops.stream().anyMatch(WitheringArms::is);
 			EndTestSupport.result("armsDropWired", "cases=" + got + " strayDrops=" + strayDrops.size() + " strayArms=" + strayArms);
