@@ -62,7 +62,7 @@ public class DragonPassiveGameTest {
 		double[] strayed = new double[1];
 		helper.onEachTick(() -> strayed[0] = Math.max(strayed[0], dragon.position().distanceTo(Rooftop.hoverPoint())));
 		helper.startSequence()
-			.thenIdle(DragonRules.ATTACK_PERIOD * 2 + 50)
+			.thenIdle(DragonRules.CRUISE_TICKS * 2 + 50)
 			.thenExecute(() -> {
 				EndTestSupport.result("dragonPassive", "mode=" + state.mode() + " attacks=" + state.attacks().size() + " strayed=" + strayed[0]);
 				DragonState.Mode mode = state.mode();

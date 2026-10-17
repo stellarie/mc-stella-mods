@@ -163,13 +163,20 @@ game test skips time with `EndClock.advance`, because the game clock barely move
 - Level 150, with a fixed maximum health of 600,000 (stored as for the Sovereign). The dragon is claimed before the mobs
   mod rolls it.
 - Its cruise is 30 per cent of what it was (`DragonFlight.CRUISE`). The swoop and the dive keep their speed.
-- Passive until a player stands on the rooftop. Awake, it circles and picks an attack every 100 ticks. It calms 200 ticks
+- Passive until a player stands on the rooftop. Awake, it circles the middle of the roof on one ring (22 blocks out, one
+  height) at the cruise and flies its attacks in a fixed cycle: swoop, barrage, dive, airdrop, then again. 100 ticks of
+  cruise (`DragonRules.CRUISE_TICKS`) pass between the end of one attack and the start of the next. It calms 200 ticks
   after the roof empties. The attacks aim at the deck disc, not at a square.
+- It neither roosts nor perches in the 600 ticks after it wakes from passive (`DragonRules.WAKE_GRACE`). A due perch or
+  roost waits for the end of that time.
+- A bed or a respawn anchor that blows in the End does the dragon no harm (`DamageTypes.BAD_RESPAWN_POINT` is refused).
 - Swoop and dive start with a wind-up: the dragon brakes for 20 ticks, hangs still, and winds a spiral of End particles
   round itself until 100 ticks have passed since the wind-up began. Then the attack starts at the nearest player.
 - Swoop: it flies through the nearest player. Everything in its path takes 30 damage and slowness II for 100 ticks.
 - Breath barrage: 12 dragon fireballs, 4 ticks apart, at points on the roof.
-- Dive: it drops onto the roof. Everything within 8 blocks gets an upward velocity of 1.6.
+- Dive: it drops onto the roof. Everything within 8 blocks is shoved away from the impact at 0.6 along the ground
+  (`DIVE_KNOCKBACK`), and none is moving up faster than 0.2 (`DIVE_UP_CAP`). The deck disc is 23 blocks across to its rim,
+  so the shove cannot throw anyone off it.
 - Airdrop: it flies over the middle of the roof and lets go of 2 skeleton archers and 2 wither skeletons in full netherite,
   level 120, 6 to 9 blocks from the middle and 10 blocks over the deck. It adds none while 8 of its airdrop mobs stand.
 - Breath clouds of the dragon's fireballs last 60 ticks in all, the 20 tick wait included, not 600.
@@ -177,14 +184,20 @@ game test skips time with `EndClock.advance`, because the game clock barely move
   damage there. While it sits, 3 breath clouds fall on random points of the deck disc every 5 ticks. The timer runs while
   the dragon is passive or awake, and stands still during the roost.
 - Roost: at half health, once, it lands on the portal for 2,400 ticks and takes a quarter of the damage. Every 100 ticks
-  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double. A
-  roost takes the dragon from a perch.
+  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the cycle holds the swoop and the dive
+  twice (swoop, barrage, dive, airdrop, swoop, dive). A roost takes the dragon from a perch.
 - Crystals: the buff of a pillar follows vanilla's spike order. 1 regeneration, 2 damage plus 20 per cent, 3 damage taken
   minus 15 per cent, 4 speed plus 20 per cent, 5 sixteen barrage shots, 6 knockback resistance, 7 wyvern return in 300
   ticks, 8 swoop slowness IV, 9 dive fire charges, 10 absorption 40 (times the rpg health scale).
 - Wyverns: four phantoms at scale 3, each ridden by a skeleton at scale 1.5 in netherite with a bow, level 130. A rider
   alive means the wyvern has no target, and the wyvern circles the middle of the roof between 8 and 14 blocks over the deck,
   where its rider's bow reaches. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Wyvern spacing: each place owns a quarter of the roof's circle and its wyvern circles a point inside it. Any two wyverns
+  are pushed apart along the ground until they stand 10 blocks from each other (`WYVERN_SPACING`). A swooping wyvern keeps
+  its course and the other gives way.
+- A freed wyvern (its rider dead) breathes and swoops. Every 200 to 400 ticks it drops a dragon breath cloud (60 ticks,
+  instant damage I) within 1.5 blocks of the nearest rooftop player. Every 300 to 500 ticks it flies straight at that
+  player at 1 block a tick and bites on touch. The delays come from `EndClock` and are drawn again after each use.
 - Factions: every mob of the castle (the floor mobs, the Sovereign, the undead blazes, the dragon and its side) is one side.
   Two mixins (`MobTargetMixin`, `LivingEntityAngerMixin`) keep a castle mob from taking another as a target or answering
   its blow. A player, and any creature outside the castle, stays a valid target.

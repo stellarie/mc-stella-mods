@@ -1,7 +1,9 @@
 package com.stella.end;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -56,7 +58,7 @@ final class DragonAttacks {
 		if (target == null) {
 			return;
 		}
-		DragonState.Attack attack = state.forced != null ? state.forced : state.pick(end.getRandom().nextInt(state.totalWeight()));
+		DragonState.Attack attack = state.forced != null ? state.forced : state.nextInCycle();
 		state.forced = null;
 		state.current = attack;
 		state.attackStartedAt = now;
@@ -104,8 +106,7 @@ final class DragonAttacks {
 				return true;
 			}
 			if (!launch(end, dragon, state, now)) {
-				state.current = null;
-				state.path.clear();
+				finish(state, now);
 				return false;
 			}
 		}
@@ -116,10 +117,18 @@ final class DragonAttacks {
 			case AIRDROP -> airdrop(end, dragon, state, now, speed);
 		};
 		if (!going) {
-			state.current = null;
-			state.path.clear();
+			finish(state, now);
 		}
 		return going;
+	}
+
+	/** Ends the attack under way and starts the cruise that must pass before the next one. */
+	private static void finish(final DragonState state, final long now) {
+		state.attacks.get(state.attacks.size() - 1).endedAt = now;
+		BehaviorLog.info("[END] dragon attack={} ends at={} nextAt={}", state.current, now, now + DragonRules.CRUISE_TICKS);
+		state.current = null;
+		state.path.clear();
+		state.nextAttackAt = now + DragonRules.CRUISE_TICKS;
 	}
 
 
@@ -303,7 +312,18 @@ final class DragonAttacks {
 		return true;
 	}
 
-	/** The dragon hits the roof: everything within eight blocks is thrown up, and with the crystal fire flies out. */
+	/** The push a dive gives a creature: sideways away from the impact, and never up faster than the cap. */
+	private static Vec3 shove(final LivingEntity entity, final Vec3 impact) {
+		double dx = entity.getX() - impact.x;
+		double dz = entity.getZ() - impact.z;
+		double reach = Math.hypot(dx, dz);
+		// Right under the dragon there is no side to push to.
+		double ux = reach < 1.0E-3 ? 1.0 : dx / reach;
+		double uz = reach < 1.0E-3 ? 0.0 : dz / reach;
+		return new Vec3(ux * DragonRules.DIVE_KNOCKBACK, Math.min(entity.getDeltaMovement().y, DragonRules.DIVE_UP_CAP), uz * DragonRules.DIVE_KNOCKBACK);
+	}
+
+	/** The dragon hits the roof: everything within eight blocks is shoved away, and with the crystal fire flies out. */
 	private static void land(final ServerLevel end, final EnderDragon dragon, final DragonState state, final long now, final Vec3 ground) {
 		state.landedAt = now;
 		state.impact = dragon.position();
@@ -311,13 +331,13 @@ final class DragonAttacks {
 		Vec3 impact = state.impact;
 		AABB reach = new AABB(impact.x - DragonRules.DIVE_RADIUS, impact.y - DragonRules.DIVE_RADIUS, impact.z - DragonRules.DIVE_RADIUS,
 			impact.x + DragonRules.DIVE_RADIUS, impact.y + DragonRules.DIVE_RADIUS, impact.z + DragonRules.DIVE_RADIUS);
-		List<UUID> lifted = new ArrayList<>();
+		Map<UUID, Vec3> pushed = new LinkedHashMap<>();
 		for (LivingEntity entity : end.getEntitiesOfClass(LivingEntity.class, reach, DragonAttacks::fair)) {
 			if (Math.hypot(entity.getX() - impact.x, entity.getZ() - impact.z) <= DragonRules.DIVE_RADIUS) {
-				Vec3 motion = entity.getDeltaMovement();
-				entity.setDeltaMovement(motion.x, DragonRules.DIVE_LIFT, motion.z);
+				Vec3 given = shove(entity, impact);
+				entity.setDeltaMovement(given);
 				entity.needsSync = true;
-				lifted.add(entity.getUUID());
+				pushed.put(entity.getUUID(), given);
 			}
 		}
 		List<UUID> charges = new ArrayList<>();
@@ -331,7 +351,7 @@ final class DragonAttacks {
 				}
 			}
 		}
-		state.dives.add(new DragonState.Dive(now, impact, lifted, charges));
-		BehaviorLog.info("[END] dragon dive landed at={} lifted={} charges={}", impact, lifted.size(), charges.size());
+		state.dives.add(new DragonState.Dive(now, impact, pushed, charges));
+		BehaviorLog.info("[END] dragon dive landed at={} pushed={} charges={}", impact, pushed.size(), charges.size());
 	}
 }

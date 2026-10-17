@@ -72,12 +72,15 @@ final class EndTestSupport {
 		EndState state = EndCastles.state(end);
 		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false, 0));
 		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), false);
-		int y = EndCastle.standY(EndCastle.FLOORS);
-		for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
-			for (int z = EndCastle.MIN_Z + 1; z < EndCastle.MIN_Z + EndCastle.SIZE - 1; z++) {
-				BlockPos at = new BlockPos(x, y, z);
-				if (end.getBlockState(at).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
-					end.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+		int floor = EndCastle.standY(EndCastle.FLOORS);
+		// A fireball sets its fire a cell or two above the floor, so the sweep takes three cells of height.
+		for (int y = floor; y <= floor + 2; y++) {
+			for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
+				for (int z = EndCastle.MIN_Z + 1; z < EndCastle.MIN_Z + EndCastle.SIZE - 1; z++) {
+					BlockPos at = new BlockPos(x, y, z);
+					if (end.getBlockState(at).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
+						end.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+					}
 				}
 			}
 		}

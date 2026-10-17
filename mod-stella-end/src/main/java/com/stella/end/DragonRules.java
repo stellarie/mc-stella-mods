@@ -6,7 +6,10 @@ import java.util.Set;
 public final class DragonRules {
 	/** The dragon stays within this many blocks of the End origin. */
 	public static final double LEASH = 48.0;
-	public static final int ATTACK_PERIOD = 100;
+	/** The dragon cruises this many ticks between the end of one attack and the start of the next. */
+	public static final int CRUISE_TICKS = 100;
+	/** The dragon neither roosts nor perches in this many ticks after it wakes. */
+	public static final long WAKE_GRACE = 600L;
 	/** An awake dragon turns passive again once the roof has been empty this long. */
 	public static final long CALM_TICKS = 200L;
 
@@ -18,7 +21,10 @@ public final class DragonRules {
 	public static final int BARRAGE_SHOTS_BUFFED = 16;
 	public static final int BARRAGE_GAP = 4;
 	public static final double DIVE_RADIUS = 8.0;
-	public static final double DIVE_LIFT = 1.6;
+	/** The horizontal push a dive gives, away from where it lands. */
+	public static final double DIVE_KNOCKBACK = 0.6;
+	/** A dive leaves no one moving up faster than this. */
+	public static final double DIVE_UP_CAP = 0.2;
 	public static final int DIVE_CHARGES = 8;
 
 	public static final float ROOST_HEALTH = 0.5F;
@@ -56,6 +62,16 @@ public final class DragonRules {
 	public static final double WYVERN_BAND_LOW = 8.0;
 	public static final double WYVERN_BAND_HIGH = 14.0;
 	public static final double BOW_RANGE = 15.0;
+	/** Two wyverns never stand nearer than this, measured along the ground. */
+	public static final double WYVERN_SPACING = 10.0;
+	/** A freed wyvern breathes after a delay drawn from this range, and again after each breath. */
+	public static final int WYVERN_BREATH_MIN = 200;
+	public static final int WYVERN_BREATH_MAX = 400;
+	/** A freed wyvern swoops at a player after a delay drawn from this range, and again after each swoop. */
+	public static final int WYVERN_SWOOP_MIN = 300;
+	public static final int WYVERN_SWOOP_MAX = 500;
+	/** A wyvern's breath lands within this many blocks of the player, on each axis. */
+	public static final double WYVERN_BREATH_SCATTER = 1.5;
 
 	public static final long REVIVE_TICKS = 144000L;
 	public static final int XP_LEVEL = 120;

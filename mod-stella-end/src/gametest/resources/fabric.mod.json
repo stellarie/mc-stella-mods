@@ -39,6 +39,8 @@
 			"com.stella.end.WyvernGameTest",
 			"com.stella.end.WyvernPolishGameTest",
 			"com.stella.end.DragonPolishGameTest",
+			"com.stella.end.DragonTweaksGameTest",
+			"com.stella.end.WyvernTweaksGameTest",
 			"com.stella.end.DragonRoostGameTest",
 			"com.stella.end.DragonCrystalGameTest",
 			"com.stella.end.DragonDeathGameTest",

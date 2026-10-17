@@ -22,8 +22,8 @@ final class DragonRoost {
 	private DragonRoost() {
 	}
 
-	static boolean due(final EnderDragon dragon, final DragonState state) {
-		return !state.roosted && dragon.getHealth() <= dragon.getMaxHealth() * DragonRules.ROOST_HEALTH;
+	static boolean due(final EnderDragon dragon, final DragonState state, final long now) {
+		return !state.roosted && !state.inGrace(now) && dragon.getHealth() <= dragon.getMaxHealth() * DragonRules.ROOST_HEALTH;
 	}
 
 	static void begin(final EnderDragon dragon, final DragonState state, final long now) {

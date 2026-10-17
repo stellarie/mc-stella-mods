@@ -12,7 +12,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The perch: every 600 to 900 ticks the dragon lands on the portal for 200 ticks and rains breath clouds over the deck.
- * It takes normal damage there. The timer runs while the dragon is awake or passive, but a perch starts only while it is awake. It stands still during a roost.
+ * It takes normal damage there. The timer runs while the dragon is awake or passive, but a perch starts only while it is awake
+ * and not within {@link DragonRules#WAKE_GRACE} ticks of waking. It stands still during a roost.
  */
 final class DragonPerch {
 	/** The dragon has touched down within this many blocks of the portal point. */
@@ -37,7 +38,7 @@ final class DragonPerch {
 	/** Whether the dragon is free to perch and its time has come. */
 	static boolean due(final DragonState state, final long now) {
 		boolean free = state.mode == DragonState.Mode.PASSIVE || state.mode == DragonState.Mode.AWAKE;
-		return free && state.current == null && now >= state.perchAt;
+		return free && state.current == null && !state.inGrace(now) && now >= state.perchAt;
 	}
 
 	static void begin(final DragonState state, final long now) {
