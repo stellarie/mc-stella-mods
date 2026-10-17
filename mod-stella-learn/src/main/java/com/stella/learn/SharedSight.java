@@ -65,6 +65,10 @@ public final class SharedSight {
 
 	/** Runs the chain over one group of mobs that stand near each other. */
 	static void share(final ServerLevel level, final List<Monster> group) {
+		if (!LearnConfigStore.get().callouts()) {
+			return;
+		}
+
 		Map<Monster, ServerPlayer> knows = new IdentityHashMap<>();
 		ArrayDeque<Monster> queue = new ArrayDeque<>();
 		for (Monster mob : group) {

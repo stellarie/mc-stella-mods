@@ -35,6 +35,10 @@ public final class CalloutSender {
 	static void afterDamage(
 		final LivingEntity entity, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked
 	) {
+		if (!LearnConfigStore.get().callouts()) {
+			return;
+		}
+
 		if (!(entity instanceof Monster caller) || damageTaken <= 0.0F || caller.entityTags().contains(StellaMobs.NO_BEHAVIOR_TAG)) {
 			return;
 		}

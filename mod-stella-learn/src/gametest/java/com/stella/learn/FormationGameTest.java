@@ -175,6 +175,36 @@ public class FormationGameTest {
 	}
 
 	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void withCalloutsOffAHurtMobCallsNoOneAndAGroupStillForms(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 30.5);
+		Mob caller = zombie(helper, 20, 20);
+		Mob second = zombie(helper, 24, 20);
+		Mob third = zombie(helper, 28, 20);
+		Mob idle = zombie(helper, 24, 24);
+		List<Mob> all = List.of(caller, second, third, idle);
+		all.forEach(mob -> mob.setNoAi(true));
+		LearnArena.whenReady(helper, List.of(player, caller, second, third, idle), () -> {
+			caller.setTarget(player);
+			second.setTarget(player);
+			third.setTarget(player);
+			caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F);
+			Formations.scan(helper.getLevel());
+			int answers = LearnTestInit.answersTo(caller.getUUID());
+			boolean formed = all.stream().allMatch(mob -> sameFormation(caller, mob));
+			StellaLearn.LOGGER.info(
+				"[BEHAVIOR] test=withCalloutsOffAHurtMobCallsNoOneAndAGroupStillForms RESULT answers={} idleTarget={} formed={}",
+				answers, idle.getTarget(), formed
+			);
+			helper.assertTrue(answers == 0, "a hurt mob called " + answers + " answers with callouts off");
+			helper.assertTrue(idle.getTarget() == null, "the idle mob was turned onto " + idle.getTarget());
+			helper.assertTrue(SharedSight.seenSpot(idle) == null, "the idle mob was told where the player stands");
+			helper.assertTrue(formed, "the four mobs did not share one formation");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
 	public void aMobThatCannotSeeThePlayerLearnsOfItFromMobsThatSeeEachOther(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		// One wall hides the player from the second and third mob. A second wall hides the first mob from the third.
@@ -198,7 +228,7 @@ public class FormationGameTest {
 			helper.assertTrue(seer.hasLineOfSight(player), "the first mob does not see the player");
 			helper.assertTrue(!second.hasLineOfSight(player) && !third.hasLineOfSight(player), "a mob behind the wall sees the player");
 			helper.assertTrue(second.hasLineOfSight(seer) && third.hasLineOfSight(second) && !third.hasLineOfSight(seer), "the chain of sight is not as built");
-			Formations.scan(helper.getLevel());
+			LearnTestInit.withCallouts(() -> Formations.scan(helper.getLevel()));
 			StellaLearn.LOGGER.info(
 				"[BEHAVIOR] test=aMobThatCannotSeeThePlayerLearnsOfItFromMobsThatSeeEachOther RESULT secondTarget={} thirdTarget={} thirdSeen={}",
 				second.getTarget(), third.getTarget(), SharedSight.seenSpot(third)

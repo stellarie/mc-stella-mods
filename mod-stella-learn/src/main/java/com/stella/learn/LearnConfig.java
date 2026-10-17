@@ -10,7 +10,7 @@ public record LearnConfig(
 	double shieldSaturation, double shieldThreshold, int shieldPatienceTicks, int shieldRestTicks,
 	double rangedSaturation, double coverThreshold, int coverRestTicks,
 	double retreatSaturation, double chokeThreshold, int chokeGroup, int chokePatienceTicks, int chokeRestTicks,
-	boolean behaviorLog, int logSummaryTicks, boolean calloutFx,
+	boolean behaviorLog, int logSummaryTicks, boolean calloutFx, boolean callouts,
 	double moveSaturation, double moveThreshold, int interceptLeadTicks, double critSaturation, double chargeTighten,
 	double rlAlpha, double rlEpsilon, int rlWindowTicks
 ) {
@@ -51,6 +51,8 @@ public record LearnConfig(
 	public static final int DEFAULT_LOG_SUMMARY_TICKS = 600;
 	/** Whether a callout plays its particles and sound, so a player can see a call go out. */
 	public static final boolean DEFAULT_CALLOUT_FX = true;
+	/** Whether monsters call each other in: the hurt callout and shared sight. Formations form either way. */
+	public static final boolean DEFAULT_CALLOUTS = false;
 	/** Movement samples, decayed, at which a strafe, a charge or a kite counts as a full habit. */
 	public static final double DEFAULT_MOVE_SATURATION = 6.0;
 	/** The share of a full movement habit at which mobs adapt to it. */
@@ -88,6 +90,7 @@ public record LearnConfig(
 	static final String BEHAVIOR_LOG = "behavior_log";
 	static final String LOG_SUMMARY_TICKS = "log_summary_ticks";
 	static final String CALLOUT_FX = "callout_fx";
+	static final String CALLOUTS = "callouts";
 	static final String MOVE_SATURATION = "move_saturation";
 	static final String MOVE_THRESHOLD = "move_threshold";
 	static final String INTERCEPT_LEAD_TICKS = "intercept_lead_ticks";
@@ -102,7 +105,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx, this.callouts,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
 			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
 	}
@@ -112,7 +115,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx, this.callouts,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
 			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
 	}
@@ -122,7 +125,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx, this.callouts,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
 			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
 	}
@@ -132,7 +135,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			value, this.logSummaryTicks, this.calloutFx,
+			value, this.logSummaryTicks, this.calloutFx, this.callouts,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
 			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
 	}
@@ -142,7 +145,17 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks, value,
+			this.behaviorLog, this.logSummaryTicks, value, this.callouts,
+			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+	}
+
+	public LearnConfig withCallouts(final boolean value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx, value,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
 			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
 	}
@@ -154,7 +167,7 @@ public record LearnConfig(
 			DEFAULT_SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_REST_TICKS, DEFAULT_RANGED_SATURATION, DEFAULT_COVER_THRESHOLD,
 			DEFAULT_COVER_REST_TICKS, DEFAULT_RETREAT_SATURATION, DEFAULT_CHOKE_THRESHOLD, DEFAULT_CHOKE_GROUP,
 			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS, DEFAULT_BEHAVIOR_LOG, DEFAULT_LOG_SUMMARY_TICKS,
-			DEFAULT_CALLOUT_FX, DEFAULT_MOVE_SATURATION, DEFAULT_MOVE_THRESHOLD, DEFAULT_INTERCEPT_LEAD_TICKS, DEFAULT_CRIT_SATURATION,
+			DEFAULT_CALLOUT_FX, DEFAULT_CALLOUTS, DEFAULT_MOVE_SATURATION, DEFAULT_MOVE_THRESHOLD, DEFAULT_INTERCEPT_LEAD_TICKS, DEFAULT_CRIT_SATURATION,
 			DEFAULT_CHARGE_TIGHTEN,
 			DEFAULT_RL_ALPHA, DEFAULT_RL_EPSILON, DEFAULT_RL_WINDOW_TICKS
 		);
@@ -197,6 +210,7 @@ public record LearnConfig(
 			flag(root, BEHAVIOR_LOG, DEFAULT_BEHAVIOR_LOG),
 			(int) count(root, LOG_SUMMARY_TICKS, DEFAULT_LOG_SUMMARY_TICKS),
 			flag(root, CALLOUT_FX, DEFAULT_CALLOUT_FX),
+			flag(root, CALLOUTS, DEFAULT_CALLOUTS),
 			number(root, MOVE_SATURATION, DEFAULT_MOVE_SATURATION),
 			number(root, MOVE_THRESHOLD, DEFAULT_MOVE_THRESHOLD),
 			(int) number(root, INTERCEPT_LEAD_TICKS, DEFAULT_INTERCEPT_LEAD_TICKS),
