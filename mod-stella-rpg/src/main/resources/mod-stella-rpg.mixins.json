@@ -18,6 +18,7 @@
 		"RpgMobDropRollMixin",
 		"RpgOutgoingDamageMixin",
 		"RpgPlayerExperienceMixin",
+		"RpgOreExperienceMixin",
 		"RpgSleepHealMixin",
 		"RpgDebuffResistanceMixin",
 		"RpgPoisonTypeMixin",

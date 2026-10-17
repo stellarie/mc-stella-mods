@@ -421,6 +421,13 @@ The level lives in the `stella_refine` custom data. The equips Refine station re
 | Unbroken Vow | Vow of Valor | Gives Health Boost II for 30 seconds. |
 | Steadfast Prayer | Serene Mind | Clears your harmful effects and gives Regeneration I for 8 seconds. |
 
+## Mana Crystal
+
+Breaking lapis ore, deepslate lapis ore or an amethyst cluster as a player has a 10% chance to drop a Mana
+Crystal. Silk Touch drops none, and neither does a break that gives no ore drop. Craft paper, the spell's material
+and a Mana Crystal to get 4 scrolls instead of 2. There is one such recipe for each spell scroll, named
+`<spell>_crystal_scroll`. The Scroll of Return has none.
+
 ## Scroll of Return
 
 One paper, one ender pearl and one feather make 16 Scrolls of Return. Read one and it carries you to

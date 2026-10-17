@@ -78,6 +78,11 @@ public class RefiningGameTest {
 		});
 	}
 
+	/** Forces a player's refine rolls; the shared roller of this class installs when the class loads. */
+	static void force(final ServerPlayer player, final boolean outcome) {
+		FORCED.put(player.getUUID(), outcome);
+	}
+
 	private static List<String> events(final ServerPlayer player) {
 		return EVENTS.computeIfAbsent(player.getUUID(), key -> new CopyOnWriteArrayList<>());
 	}

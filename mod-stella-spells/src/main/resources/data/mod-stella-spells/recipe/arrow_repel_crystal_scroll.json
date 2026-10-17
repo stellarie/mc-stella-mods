@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:sticky_piston",
+		"mod-stella-spells:mana_crystal"
+	],
+	"result": {
+		"id": "mod-stella-spells:arrow_repel_scroll",
+		"count": 4
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:soul_soil",
+		"mod-stella-spells:mana_crystal"
+	],
+	"result": {
+		"id": "mod-stella-spells:soul_siphon_scroll",
+		"count": 4
+	}
+}

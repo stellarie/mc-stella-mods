@@ -39,7 +39,7 @@ import net.minecraft.world.phys.Vec3;
 /** Rare rolled drops from mined ore, plain drops that stack, and chest loot that carries nothing. */
 public final class MiningRollGameTest {
 	/** The vanilla block loot tables of the covered ores, with the block that owns each. */
-	private static final Map<String, Block> ORES = ores();
+	static final Map<String, Block> ORES = ores();
 	private static final Map<String, String> TIER_TABLE = Map.of(
 		"copper", "copper_ore", "iron", "iron_ore", "gold", "gold_ore", "diamond", "diamond_ore", "debris", "ancient_debris"
 	);
@@ -64,7 +64,7 @@ public final class MiningRollGameTest {
 	}
 
 	/** One block break: the real block loot table, the block state, a depth, a tool, and an optional player. */
-	private static List<ItemStack> mine(
+	static List<ItemStack> mine(
 		final GameTestHelper helper, final String ore, final Block block, final double depth, final ItemStack tool,
 		final ServerPlayer player, final long seed
 	) {
@@ -95,7 +95,7 @@ public final class MiningRollGameTest {
 		return !stack.has(WeaponRolls.STAT_ROLLS) && !stack.has(WeaponRolls.AFFIX_ROLLS) && !enchanted(stack);
 	}
 
-	private static boolean rolled(final ItemStack stack) {
+	static boolean rolled(final ItemStack stack) {
 		return stack.has(WeaponRolls.STAT_ROLLS) || stack.has(WeaponRolls.AFFIX_ROLLS);
 	}
 

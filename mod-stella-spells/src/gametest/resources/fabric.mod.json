@@ -85,7 +85,8 @@
 			"com.stella.spells.DescriptionWidthGameTest",
 			"com.stella.spells.SchoolTooltipGameTest",
 			"com.stella.spells.FalconGuardGameTest",
-			"com.stella.spells.CooldownReductionGameTest"
+			"com.stella.spells.CooldownReductionGameTest",
+			"com.stella.spells.ManaCrystalGameTest"
 		]
 	},
 	"depends": {

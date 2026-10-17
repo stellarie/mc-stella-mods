@@ -9,6 +9,7 @@
 			"com.stella.equips.TestItems"
 		],
 		"fabric-gametest": [
+			"com.stella.equips.RefineCatalystGameTest",
 			"com.stella.equips.AnvilCostGameTest",
 			"com.stella.equips.ReadoutThreatGameTest",
 			"com.stella.equips.ReadoutServantLevelGameTest",
