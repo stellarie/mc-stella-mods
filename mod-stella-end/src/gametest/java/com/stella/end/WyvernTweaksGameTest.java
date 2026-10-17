@@ -160,7 +160,9 @@ public class WyvernTweaksGameTest {
 			.thenSucceed();
 	}
 
-	@GameTest(environment = "mod-stella-end-test:wyvern_swoop", maxTicks = 700)
+	// One bite kills the test player, and the vanilla bite comes as well as the swoop's.
+	// A swoop at a dead player ends, so a second one may have to follow before one reaches a live player.
+	@GameTest(environment = "mod-stella-end-test:wyvern_swoop", maxTicks = 1000)
 	public void aFreedWyvernSwoopsAtAPlayerNowAndThenAndReachesThemWhileOthersWithRidersDoNot(final GameTestHelper helper) {
 		WyvernGameTest.Stand stand = WyvernGameTest.stand(helper);
 		ServerPlayer player = EndTestSupport.joinOnRoof(helper, stand.end(), 6.0, 6.0);
@@ -198,7 +200,7 @@ public class WyvernTweaksGameTest {
 			.thenWaitUntil(() -> helper.assertTrue(stand.state().wyvernSwoops().stream().anyMatch(swoop -> swoop.hitAt() != EndState.NEVER),
 				"no swoop has reached the player: " + stand.state().wyvernSwoops().size() + " swoops, the wyvern " + freed[0].wyvern().distanceTo(player) + " blocks off"))
 			.thenExecute(() -> {
-				DragonState.WyvernSwoop swoop = stand.state().wyvernSwoops().get(0);
+				DragonState.WyvernSwoop swoop = stand.state().wyvernSwoops().stream().filter(each -> each.hitAt() != EndState.NEVER).findFirst().orElseThrow();
 				boolean onlyFreed = stand.state().wyvernSwoops().stream().allMatch(each -> each.slot() == 0);
 				EndTestSupport.result("wyvernSwoop", "due=" + due[0] + " swoops=" + stand.state().wyvernSwoops().size() + " slot=" + swoop.slot() + " startedAt=" + swoop.startedAt()
 					+ " hitAt=" + swoop.hitAt() + " dealt=" + swoop.dealt() + " maxHealth=" + player.getMaxHealth() + " closest=" + closest[0] + " ridersFree=" + due[1]);
