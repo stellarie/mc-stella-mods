@@ -93,6 +93,8 @@ public class WyvernTweaksGameTest {
 	/** A cow with plenty of health. A breath cloud heals the undead, so a zombie would show nothing. */
 	static Cow cow(final ServerLevel end, final Vec3 at) {
 		Cow cow = EntityTypes.COW.create(end, EntitySpawnReason.SPAWNER);
+		// Claimed, so the mobs mod rolls no trait for it: its end trait negates hits by chance.
+		LevelBridge.claim(cow);
 		cow.addTag(EndTestSupport.DUMMY_TAG);
 		cow.setNoAi(true);
 		cow.setPersistenceRequired();
