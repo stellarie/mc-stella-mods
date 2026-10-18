@@ -47,7 +47,8 @@ public final class CalloutSender {
 		}
 
 		if (source.getEntity() instanceof ServerPlayer player) {
-			CalloutBoard.send(caller, player, choose(caller, player), LearnConfigStore.get());
+			Callout callout = LearnConfigStore.get().callouts() ? choose(caller, player) : call(Rally.TYPE, caller, player, RALLY_PRIORITY, null);
+			CalloutBoard.send(caller, player, callout, LearnConfigStore.get());
 		}
 	}
 
