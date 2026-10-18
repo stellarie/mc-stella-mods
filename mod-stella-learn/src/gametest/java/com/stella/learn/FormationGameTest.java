@@ -202,8 +202,8 @@ public class FormationGameTest {
 			helper.assertTrue(formed, "the four mobs did not share one formation");
 			third.setHealth(third.getMaxHealth() * 0.2F + 1.0F);
 			third.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F);
-			int calls = LearnTestInit.linesWith("CHOOSE", LearnLog.who(third)).size();
-			helper.assertTrue(calls > 0, "a mob below a quarter health called no one");
+			int calls = LearnTestInit.linesWith("type=" + Rally.TYPE, LearnLog.who(third)).size();
+			helper.assertTrue(calls > 0, "a mob below a quarter health sent no rally");
 			helper.succeed();
 		});
 	}
